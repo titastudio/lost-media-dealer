@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOST MEDIA DEALER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #0f0f1a;
+    --bg3: #13131f;
+    --panel: #111118;
+    --border: #2a2a3a;
+    --border2: #3a3a5a;
+    --green: #39ff6e;
+    --green2: #1a8c3a;
+    --amber: #ffc844;
+    --amber2: #c97d00;
+    --red: #ff3c5a;
+    --red2: #8c1a2a;
+    --cyan: #44d4ff;
+    --cyan2: #1a6a8c;
+    --purple: #b966ff;
+    --purple2: #5a1a8c;
+    --pink: #ff66b3;
+    --text: #e0e0f0;
+    --text2: #9090b0;
+    --text3: #5a5a7a;
+    --scanline: rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, var(--scanline) 0px, var(--scanline) 1px, transparent 1px, transparent 4px);
+    pointer-events: none;
+    z-index: 9999;
+    animation: scanMove 8s linear infinite;
+  }
+
+  @keyframes scanMove { 0%{background-position:0 0} 100%{background-position:0 40px} }
+
+  .vhs-glitch { animation: vhsGlitch 18s infinite; }
+  @keyframes vhsGlitch {
+    0%,92%,100%{transform:none;filter:none}
+    93%{transform:translateX(-2px) skewX(-1deg);filter:hue-rotate(20deg)}
+    94%{transform:translateX(3px);filter:brightness(1.15)}
+    95%{transform:translateX(-1px)}
+    96%{transform:none}
+  }
+
+  #app { max-width: 1200px; margin: 0 auto; padding: 10px; min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    border: 1px solid var(--border2);
+    background: var(--panel);
+    padding: 9px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,rgba(57,255,110,0.03)0%,transparent 50%,rgba(68,212,255,0.03)100%);
+    pointer-events: none;
+  }
+  .logo { font-family:'VT323',monospace; font-size:26px; color:var(--green); letter-spacing:3px; text-shadow:0 0 18px rgba(57,255,110,0.4); line-height:1; }
+  .logo span { color:var(--amber); }
+  .header-stats { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .stat-chip { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text2); }
+  .stat-chip .val { font-family:'VT323',monospace; font-size:20px; line-height:1; }
+  .val.money { color:var(--green); }
+  .val.rep { color:var(--amber); }
+  .val.day { color:var(--cyan); }
+  .rec-dot { width:7px; height:7px; border-radius:50%; background:var(--red); animation:blink 1.2s ease-in-out infinite; display:inline-block; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* MINI BARS IN HEADER */
+  .header-bar-wrap { display:flex; flex-direction:column; gap:2px; min-width:70px; }
+  .header-bar-label { font-size:9px; color:var(--text3); font-family:'Space Mono',monospace; letter-spacing:1px; }
+  .header-bar { height:3px; background:var(--border); }
+  .header-bar-fill { height:100%; transition:width 0.5s; }
+
+  /* LAYOUT */
+  .main-grid { display:grid; grid-template-columns:270px 1fr 255px; gap:8px; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--border); padding:10px; position:relative; }
+  .panel-title { font-family:'VT323',monospace; font-size:17px; letter-spacing:2px; color:var(--text2); border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:8px; display:flex; align-items:center; gap:7px; }
+  .dot { width:5px; height:5px; border-radius:50%; background:var(--green); animation:blink 2s ease-in-out infinite; }
+
+  /* INVENTORY */
+  .inventory-item { border:1px solid var(--border); padding:7px; margin-bottom:5px; cursor:pointer; transition:all 0.15s; position:relative; overflow:hidden; }
+  .inventory-item:hover { border-color:var(--border2); background:rgba(255,255,255,0.02); }
+  .inventory-item.selected { border-color:var(--cyan2); background:rgba(68,212,255,0.04); }
+  .item-format-tag { display:inline-block; font-family:'VT323',monospace; font-size:13px; padding:1px 5px; margin-bottom:3px; letter-spacing:1px; }
+  .tag-vhs{background:rgba(255,60,90,.15);color:var(--red);border:1px solid var(--red2);}
+  .tag-floppy{background:rgba(68,212,255,.15);color:var(--cyan);border:1px solid var(--cyan2);}
+  .tag-dat{background:rgba(185,102,255,.15);color:var(--purple);border:1px solid var(--purple2);}
+  .tag-cd{background:rgba(255,200,68,.15);color:var(--amber);border:1px solid var(--amber2);}
+  .tag-beta{background:rgba(255,102,179,.15);color:var(--pink);border:1px solid #8c2a5a;}
+  .tag-hdd{background:rgba(57,255,110,.15);color:var(--green);border:1px solid var(--green2);}
+  .tag-minidv{background:rgba(68,212,255,.08);color:#77eeff;border:1px solid #1a5566;}
+  .item-name { font-size:12px; color:var(--text); margin-bottom:2px; line-height:1.3; }
+  .item-meta { display:flex; gap:6px; flex-wrap:wrap; }
+  .meta-bit { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; }
+  .meta-bit.warn{color:var(--amber2);} .meta-bit.danger{color:var(--red);} .meta-bit.good{color:var(--green2);}
+  .mini-bar { height:2px; background:var(--border); margin-top:2px; }
+  .mini-bar-fill { height:100%; transition:width 0.3s; }
+  .bar-corrupt{background:var(--red2);} .bar-auth{background:var(--green2);} .bar-hype{background:var(--amber);}
+
+  /* DETAIL */
+  .center-panel { display:flex; flex-direction:column; gap:8px; }
+  .detail-box { background:var(--panel); border:1px solid var(--border); padding:12px; min-height:220px; position:relative; }
+  .detail-box .noise { position:absolute; inset:0; opacity:0.015; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); pointer-events:none; }
+  .detail-title { font-family:'VT323',monospace; font-size:21px; color:var(--text); letter-spacing:1px; margin-bottom:5px; line-height:1.2; }
+  .detail-era { font-size:11px; color:var(--text3); font-family:'Space Mono',monospace; margin-bottom:8px; letter-spacing:1px; }
+  .detail-desc { font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:10px; font-style:italic; border-left:2px solid var(--border2); padding-left:9px; }
+  .detail-stats-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; }
+  .dstat { background:var(--bg2); border:1px solid var(--border); padding:6px 8px; }
+  .dstat-label { font-size:9px; color:var(--text3); font-family:'Space Mono',monospace; letter-spacing:1px; margin-bottom:1px; text-transform:uppercase; }
+  .dstat-val { font-family:'VT323',monospace; font-size:19px; line-height:1; }
+  .auth-fake{color:var(--red);} .auth-partial{color:var(--amber);} .auth-authentic{color:var(--green);} .auth-mythic{color:var(--purple);} .auth-unknown{color:var(--text3);}
+
+  /* BUTTONS */
+  .btn { font-family:'VT323',monospace; font-size:15px; letter-spacing:1px; padding:4px 12px; border:1px solid; cursor:pointer; background:transparent; transition:all 0.15s; text-transform:uppercase; }
+  .btn:hover{filter:brightness(1.3);background:rgba(255,255,255,0.04);}
+  .btn:active{transform:scale(0.97);}
+  .btn-restore{color:var(--cyan);border-color:var(--cyan2);}
+  .btn-analyze{color:var(--purple);border-color:var(--purple2);}
+  .btn-sell{color:var(--green);border-color:var(--green2);}
+  .btn-leak{color:var(--amber);border-color:var(--amber2);}
+  .btn-destroy{color:var(--red);border-color:var(--red2);}
+  .btn-primary{color:var(--green);border-color:var(--green);}
+  .btn-mission{color:var(--pink);border-color:#8c2a5a;}
+  .btn-disabled{opacity:0.35;cursor:not-allowed;}
+  .btn-disabled:hover{filter:none;background:transparent;}
+  .btn-help{color:var(--text3);border-color:var(--border2);font-size:13px;padding:2px 7px;}
+  .actions-row { display:flex; gap:6px; flex-wrap:wrap; }
+
+  /* BUYER */
+  .buyer-item { border:1px solid var(--border); padding:7px; margin-bottom:5px; display:flex; align-items:flex-start; gap:7px; }
+  .buyer-icon { font-size:20px; width:26px; text-align:center; line-height:1; padding-top:2px; }
+  .buyer-info { flex:1; }
+  .buyer-name { font-family:'VT323',monospace; font-size:16px; color:var(--text); line-height:1; margin-bottom:2px; }
+  .buyer-desc { font-size:10px; color:var(--text3); margin-bottom:3px; }
+  .buyer-offer { font-family:'VT323',monospace; font-size:15px; color:var(--green); }
+
+  /* TICKER */
+  .ticker { background:var(--bg2); border:1px solid var(--border); border-top:1px solid var(--green2); padding:3px 10px; overflow:hidden; white-space:nowrap; margin-bottom:8px; }
+  .ticker-inner { display:inline-block; animation:scroll 35s linear infinite; font-family:'VT323',monospace; font-size:15px; color:var(--text2); letter-spacing:1px; }
+  @keyframes scroll{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+  .ticker-inner span{color:var(--green);margin-right:4px;}
+  .ticker-inner .up{color:var(--green);} .ticker-inner .down{color:var(--red);} .ticker-inner .warn{color:var(--amber);}
+
+  /* LOG */
+  .log-box { background:var(--panel); border:1px solid var(--border); padding:7px; height:115px; overflow-y:auto; font-size:11px; font-family:'Space Mono',monospace; }
+  .log-box::-webkit-scrollbar{width:3px;} .log-box::-webkit-scrollbar-track{background:var(--bg);} .log-box::-webkit-scrollbar-thumb{background:var(--border2);}
+  .log-line{padding:1px 0;color:var(--text3);border-bottom:1px solid rgba(255,255,255,0.02);line-height:1.4;}
+  .log-line .ts{color:var(--text3);margin-right:5px;}
+  .log-line.good .msg{color:var(--green2);} .log-line.bad .msg{color:var(--red);} .log-line.info .msg{color:var(--cyan2);} .log-line.hype .msg{color:var(--amber);} .log-line.spooky .msg{color:var(--purple);}
+
+  /* MINIGAME */
+  .minigame-area { background:var(--bg2); border:1px solid var(--border2); padding:12px; position:relative; overflow:hidden; }
+  .minigame-title { font-family:'VT323',monospace; font-size:18px; color:var(--amber); letter-spacing:2px; margin-bottom:8px; }
+  .progress-bar-outer { height:16px; background:var(--bg); border:1px solid var(--border2); margin:6px 0; position:relative; overflow:hidden; }
+  .progress-bar-fill { height:100%; background:repeating-linear-gradient(90deg,var(--green2) 0px,var(--green) 8px,var(--green2) 16px); animation:barShimmer 1s linear infinite; background-size:32px 100%; transition:width 0.1s; }
+  @keyframes barShimmer{0%{background-position:0 0}100%{background-position:32px 0}}
+  .click-zone { display:inline-block; padding:7px 24px; background:var(--bg); border:2px solid var(--cyan2); color:var(--cyan); font-family:'VT323',monospace; font-size:20px; letter-spacing:2px; cursor:pointer; transition:all 0.1s; user-select:none; margin:5px 0; }
+  .click-zone:hover{border-color:var(--cyan);background:rgba(68,212,255,0.08);}
+  .click-zone:active{transform:scale(0.95);}
+  .tool-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .tool-label { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; min-width:95px; letter-spacing:1px; text-transform:uppercase; }
+  .tool-val { font-family:'VT323',monospace; font-size:17px; color:var(--cyan); min-width:28px; text-align:right; }
+  input[type=range]{accent-color:var(--cyan);width:100%;margin:4px 0;}
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal { background:var(--bg2); border:1px solid var(--border2); padding:18px; max-width:540px; width:100%; position:relative; max-height:90vh; overflow-y:auto; }
+  .modal::before { content:'▓▓▒▒░░ INCOMING ACQUISITION ░░▒▒▓▓'; display:block; font-family:'VT323',monospace; font-size:12px; color:var(--green2); letter-spacing:1px; margin-bottom:10px; animation:blink 1.5s steps(2) infinite; }
+  .modal-close { position:absolute; top:10px; right:12px; font-family:'VT323',monospace; font-size:19px; color:var(--text3); cursor:pointer; background:none; border:none; line-height:1; }
+  .modal-close:hover{color:var(--red);}
+  .source-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:12px; }
+  .source-btn { padding:9px 7px; background:var(--panel); border:1px solid var(--border); cursor:pointer; text-align:center; transition:all 0.15s; }
+  .source-btn:hover{border-color:var(--border2);background:rgba(255,255,255,0.03);}
+  .source-btn.selected{border-color:var(--cyan2);background:rgba(68,212,255,0.05);}
+  .source-icon{font-size:22px;margin-bottom:3px;}
+  .source-name{font-family:'VT323',monospace;font-size:16px;color:var(--text);letter-spacing:1px;}
+  .source-cost{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;}
+
+  /* FACTIONS */
+  .faction-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:7px; }
+  .faction-chip { font-family:'VT323',monospace; font-size:13px; padding:2px 7px; border:1px solid; letter-spacing:1px; cursor:pointer; transition:all 0.15s; position:relative; }
+  .faction-chip:hover{filter:brightness(1.2);}
+  .f-preserv{color:var(--cyan);border-color:var(--cyan2);background:rgba(68,212,255,0.07);}
+  .f-elite{color:var(--amber);border-color:var(--amber2);background:rgba(255,200,68,0.07);}
+  .f-cult{color:var(--purple);border-color:var(--purple2);background:rgba(185,102,255,0.07);}
+  .f-copyright{color:var(--red);border-color:var(--red2);background:rgba(255,60,90,0.07);}
+  .f-trend{color:var(--pink);border-color:#8c2a5a;background:rgba(255,102,179,0.07);}
+  .f-ai{color:var(--text3);border-color:var(--border2);background:rgba(90,90,122,0.1);}
+  .faction-rep-bar { height:2px; margin-top:3px; background:var(--border); }
+  .faction-rep-fill { height:100%; transition:width 0.5s; }
+
+  /* HYPE EVENTS */
+  .hype-event { background:rgba(255,200,68,0.05); border:1px solid var(--amber2); padding:7px 9px; margin-bottom:5px; animation:fadeIn 0.4s ease; }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .hype-event-title { font-family:'VT323',monospace; font-size:15px; color:var(--amber); letter-spacing:1px; margin-bottom:1px; }
+  .hype-event-desc { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; line-height:1.4; }
+
+  /* MISSIONS */
+  .mission-card { border:1px solid var(--border); padding:9px; margin-bottom:6px; background:rgba(255,102,179,0.03); transition:all 0.15s; }
+  .mission-card:hover{border-color:#8c2a5a;}
+  .mission-type { font-family:'VT323',monospace; font-size:13px; color:var(--pink); letter-spacing:1px; margin-bottom:2px; }
+  .mission-title { font-size:12px; color:var(--text); margin-bottom:3px; }
+  .mission-reward { font-family:'VT323',monospace; font-size:15px; color:var(--green); }
+  .mission-deadline { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; }
+
+  /* DECISION MODAL */
+  .decision-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1100; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .decision-box { background:var(--bg2); border:1px solid var(--purple2); padding:20px; max-width:480px; width:100%; }
+  .decision-title { font-family:'VT323',monospace; font-size:22px; color:var(--purple); letter-spacing:2px; margin-bottom:6px; }
+  .decision-body { font-size:12px; color:var(--text2); line-height:1.7; margin-bottom:14px; font-family:'Space Mono',monospace; }
+  .decision-choices { display:flex; flex-direction:column; gap:8px; }
+  .decision-choice { padding:10px 14px; border:1px solid var(--border2); cursor:pointer; transition:all 0.15s; text-align:left; background:transparent; width:100%; color:var(--text); font-family:'Space Mono',monospace; font-size:11px; }
+  .decision-choice:hover{border-color:var(--purple2);background:rgba(185,102,255,0.06);}
+  .decision-choice-label { font-family:'VT323',monospace; font-size:17px; color:var(--amber); letter-spacing:1px; margin-bottom:2px; }
+
+  /* WORLD EVENTS */
+  .world-event { background:rgba(255,60,90,0.05); border:1px solid var(--red2); padding:7px 9px; margin-bottom:5px; animation:fadeIn 0.5s ease; }
+  .world-event-title { font-family:'VT323',monospace; font-size:15px; color:var(--red); letter-spacing:1px; }
+  .world-event-desc { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; }
+
+  /* PROGRESS / GAME STAGE */
+  .stage-display { font-family:'VT323',monospace; font-size:13px; color:var(--text3); letter-spacing:1px; }
+  .stage-display .stage-name { color:var(--cyan); }
+
+  /* WAVEFORM */
+  .waveform { height:36px; display:flex; align-items:center; gap:2px; padding:0 4px; overflow:hidden; opacity:0.55; }
+  .wave-bar { flex-shrink:0; width:3px; background:var(--green2); border-radius:1px; transition:height 0.2s; }
+  .hidden-trait-badge { display:inline-flex; align-items:center; gap:3px; background:rgba(185,102,255,0.08); border:1px solid var(--purple2); padding:2px 6px; margin:2px; font-size:10px; color:var(--purple); font-family:'Space Mono',monospace; }
+  .badge-new { display:inline-block; background:var(--red2); color:var(--red); font-family:'VT323',monospace; font-size:11px; padding:0 4px; letter-spacing:1px; animation:blink 1s steps(2) infinite; }
+  .badge-seed { display:inline-block; background:rgba(185,102,255,0.15); color:var(--purple); font-family:'VT323',monospace; font-size:11px; padding:0 4px; letter-spacing:1px; }
+
+  /* TOAST */
+  .toast-container { position:fixed; bottom:18px; right:18px; z-index:9000; display:flex; flex-direction:column; gap:7px; }
+  .toast { background:var(--panel); border:1px solid var(--border2); padding:9px 13px; font-family:'VT323',monospace; font-size:16px; letter-spacing:1px; animation:toastIn 0.3s ease; max-width:280px; }
+  @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+  .toast.good{border-left:3px solid var(--green);color:var(--green);}
+  .toast.bad{border-left:3px solid var(--red);color:var(--red);}
+  .toast.info{border-left:3px solid var(--cyan2);color:var(--cyan);}
+  .toast.hype{border-left:3px solid var(--amber);color:var(--amber);}
+  .toast.spooky{border-left:3px solid var(--purple);color:var(--purple);}
+
+  .scrollable{max-height:390px;overflow-y:auto;padding-right:2px;}
+  .scrollable::-webkit-scrollbar{width:3px;} .scrollable::-webkit-scrollbar-track{background:var(--bg);} .scrollable::-webkit-scrollbar-thumb{background:var(--border2);}
+  .separator{border:none;border-top:1px solid var(--border);margin:8px 0;}
+  .section-label{font-family:'VT323',monospace;font-size:13px;color:var(--text3);letter-spacing:2px;margin-bottom:5px;text-transform:uppercase;}
+  .empty-inv{text-align:center;padding:20px 10px;color:var(--text3);font-size:10px;font-family:'Space Mono',monospace;line-height:1.8;}
+  .no-item{text-align:center;padding:28px;color:var(--text3);font-size:11px;font-family:'Space Mono',monospace;line-height:1.7;}
+  .no-missions{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;text-align:center;padding:10px;line-height:1.7;}
+
+  /* MARKET DEMAND BARS */
+  .demand-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  .demand-label { font-family:'VT323',monospace; font-size:14px; color:var(--text2); width:55px; }
+  .demand-bar { flex:1; height:4px; background:var(--border); position:relative; }
+  .demand-fill { height:100%; transition:width 0.8s; }
+  .demand-val { font-family:'VT323',monospace; font-size:13px; width:30px; text-align:right; }
+
+  /* TABS */
+  .tab-row { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:8px; flex-wrap:wrap; }
+  .tab { font-family:'VT323',monospace; font-size:13px; letter-spacing:1px; padding:4px 10px; cursor:pointer; color:var(--text3); border:1px solid transparent; border-bottom:none; margin-bottom:-1px; transition:all 0.15s; }
+  .tab:hover{color:var(--text2);}
+  .tab.active{color:var(--cyan);border-color:var(--border);background:var(--panel);border-bottom-color:var(--panel);}
+
+  /* CAPACITY */
+  .capacity-bar { height:4px; background:var(--border); margin-top:4px; }
+  .capacity-fill { height:100%; transition:width 0.4s; }
+
+  /* MEMETIC TAG */
+  .memetic-tag { display:inline-block; font-family:'VT323',monospace; font-size:12px; padding:1px 6px; background:rgba(255,60,90,0.1); border:1px solid var(--red2); color:var(--red); letter-spacing:1px; margin-top:3px; }
+
+  /* UPGRADE SHOP */
+  .upgrade-card { border:1px solid var(--border); padding:8px 10px; margin-bottom:6px; display:flex; align-items:flex-start; gap:8px; background:rgba(255,200,68,0.02); }
+  .upgrade-card.purchased { opacity:0.5; border-color:var(--green2); background:rgba(57,255,110,0.04); }
+  .upgrade-icon { font-size:20px; }
+  .upgrade-info { flex:1; }
+  .upgrade-name { font-family:'VT323',monospace; font-size:16px; color:var(--amber); letter-spacing:1px; }
+  .upgrade-desc { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; line-height:1.4; }
+  .upgrade-cost { font-family:'VT323',monospace; font-size:15px; color:var(--green); }
+
+  /* SORT/FILTER ROW */
+  .inv-controls { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:5px; }
+  .inv-ctrl-btn { font-family:'VT323',monospace; font-size:12px; padding:1px 6px; border:1px solid var(--border); color:var(--text3); cursor:pointer; background:transparent; transition:all 0.12s; }
+  .inv-ctrl-btn.active { color:var(--cyan); border-color:var(--cyan2); background:rgba(68,212,255,0.05); }
+  .inv-ctrl-btn:hover { color:var(--text2); }
+
+  /* GAME OVER / WIN */
+  .endgame-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.96); z-index:9500; display:flex; align-items:center; justify-content:center; }
+  .endgame-box { background:var(--bg2); border:1px solid var(--border2); padding:30px 36px; max-width:480px; width:100%; text-align:center; }
+  .endgame-title { font-family:'VT323',monospace; font-size:42px; letter-spacing:4px; margin-bottom:10px; line-height:1; }
+  .endgame-sub { font-size:12px; color:var(--text3); font-family:'Space Mono',monospace; line-height:1.8; margin-bottom:20px; }
+  .endgame-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+  .endgame-stat { background:var(--bg); border:1px solid var(--border); padding:8px; }
+  .endgame-stat-label { font-size:9px; color:var(--text3); font-family:'Space Mono',monospace; letter-spacing:1px; text-transform:uppercase; }
+  .endgame-stat-val { font-family:'VT323',monospace; font-size:22px; color:var(--green); }
+
+  /* NEGOTIATE */
+  .negotiate-box { background:rgba(57,255,110,0.04); border:1px solid var(--green2); padding:10px; margin-top:8px; }
+  .negotiate-title { font-family:'VT323',monospace; font-size:16px; color:var(--green); letter-spacing:1px; margin-bottom:6px; }
+  .counter-btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+
+  /* CODEX / HELP MODAL */
+  .help-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.94); z-index:1200; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .help-box { background:var(--bg2); border:1px solid var(--border2); padding:20px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; position:relative; }
+  .help-box::-webkit-scrollbar{width:3px;} .help-box::-webkit-scrollbar-thumb{background:var(--border2);}
+  .help-section { margin-bottom:16px; }
+  .help-h { font-family:'VT323',monospace; font-size:18px; color:var(--cyan); letter-spacing:2px; border-bottom:1px solid var(--border); padding-bottom:3px; margin-bottom:7px; }
+  .help-p { font-size:11px; color:var(--text2); font-family:'Space Mono',monospace; line-height:1.7; margin-bottom:5px; }
+  .help-tip { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; line-height:1.7; }
+  .help-tip span { color:var(--amber); }
+
+  /* MEMETIC HISTORY */
+  .mem-entry { border:1px solid var(--border); padding:5px 8px; margin-bottom:4px; }
+  .mem-entry-title { font-family:'VT323',monospace; font-size:14px; color:var(--red); }
+  .mem-entry-sub { font-size:9px; color:var(--text3); font-family:'Space Mono',monospace; }
+
+  /* PREVIEW IN MODAL */
+  .modal-preview { background:rgba(68,212,255,0.04); border:1px solid var(--cyan2); padding:9px; margin-top:6px; font-size:11px; color:var(--text2); font-family:'Space Mono',monospace; line-height:1.6; }
+  .modal-preview-title { font-family:'VT323',monospace; font-size:15px; color:var(--cyan); margin-bottom:4px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ===================== DATA =====================
+
+const FORMATS = ['VHS','BETA','DAT','FLOPPY','CD-R','MiniDV','HDD'];
+const ERAS = ['1972','1979','1983','1988','1991','1994','1997','2001','2004','2007'];
+const GENRES = ['horror broadcast','corporate training','religious ceremony','surveillance feed',
+  'prototype game','experimental film','children\'s program','ARG fragment','military test',
+  'public access show','documentary rough cut','music bootleg','emergency broadcast','educational oddity',
+  'news outtakes','government PSA','cult documentary','nature film rough','unaired pilot','classified debrief'];
+const CONDITIONS = ['burned label','incomplete','water damaged','encrypted','overwritten',
+  'static noise','tape splice marks','hand-labeled','magnetic deterioration','chemically degraded'];
+const MYSTERY_LAYERS = ['encoded audio signal','missing creator identity','legal suppression history',
+  'urban legend origin','unexplained visual anomaly','hidden frames','ARG trail fragment','redacted timestamps',
+  'impossible broadcast date','classified origin','unknown language overlay'];
+
+const HIDDEN_TRAITS = ['encoded_audio','missing_frames','subliminal_content','ghost_signal',
+  'backwards_speech','numeric_sequence','redacted_segment','error_correction_data','embedded_glyph','temporal_anomaly',
+  'second_audio_track','dead_air_pattern','spectral_noise','loop_fragment','cipher_text'];
+
+const SOURCES = [
+  {id:'forum',    name:'Dead Forum',       icon:'💾', cost:150,  desc:'cheap & risky',       riskBonus:0,   qualityMult:0.8},
+  {id:'auction',  name:'Storage Auction',  icon:'📦', cost:350,  desc:'moderate finds',      riskBonus:0,   qualityMult:1.0},
+  {id:'anon',     name:'Anonymous Drop',   icon:'📫', cost:80,   desc:'unknown origin',      riskBonus:5,   qualityMult:0.9},
+  {id:'estate',   name:'Estate Sale',      icon:'🏚️', cost:500,  desc:'high quality',        riskBonus:-5,  qualityMult:1.3},
+  {id:'darknet',  name:'Darknet Listing',  icon:'🕳️', cost:900,  desc:'rare & dangerous',    riskBonus:20,  qualityMult:1.6},
+  {id:'studio',   name:'Abandoned Studio', icon:'🎬', cost:650,  desc:'professional grade',  riskBonus:0,   qualityMult:1.4},
+];
+
+const BUYERS = [
+  {id:'archivist',   name:'Archivists',           icon:'🧠', wants:'authenticity', tip:'Pay premium for AUTHENTIC items. Hate fakes.',         trustBase:60},
+  {id:'conspiracy',  name:'Conspiracy Collector',  icon:'👁',  wants:'mystery',      tip:'Love UNKNOWN and MYTHIC. Mystery = value.',           trustBase:50},
+  {id:'creator',     name:'Content Creator',       icon:'🎬', wants:'viral',         tip:'Want high HYPE. Analyzed items for thumbnails.',      trustBase:55},
+  {id:'researcher',  name:'Researcher',            icon:'🧪', wants:'data',          tip:'Seek hidden traits. Pay per trait discovered.',       trustBase:65},
+  {id:'blackmarket', name:'Black Market',          icon:'😈', wants:'exclusive',     tip:'Pay most for rare formats. No questions asked.',      trustBase:30},
+  {id:'niche',       name:'Niche Community',       icon:'🧵', wants:'specific',      tip:'Obsess over specific eras. Correct era = bonus.',     trustBase:45},
+];
+
+const FACTIONS = [
+  {id:'preserv',   name:'PRESERV.',  cls:'f-preserv', color:'var(--cyan)',   repColor:'#44d4ff',
+   desc:'Preservationists want open archives and free access to lost history.'},
+  {id:'elite',     name:'ELITE',     cls:'f-elite',   color:'var(--amber)',  repColor:'#ffc844',
+   desc:'Elite Collectors hoard rare finds and drive prices up through exclusivity.'},
+  {id:'cult',      name:'CULT',      cls:'f-cult',    color:'var(--purple)', repColor:'#b966ff',
+   desc:'Signal Cultists believe media contains hidden truths. They crave the unknown.'},
+  {id:'copyright', name:'SYNDICAT',  cls:'f-copyright',color:'var(--red)',   repColor:'#ff3c5a',
+   desc:'Copyright Syndicates want items destroyed or locked away. Dangerous allies.'},
+  {id:'trend',     name:'TREND',     cls:'f-trend',   color:'var(--pink)',   repColor:'#ff66b3',
+   desc:'Trend Media monetizes your finds. Great for hype, terrible for credibility.'},
+  {id:'ai',        name:'AI FORGER', cls:'f-ai',      color:'var(--text3)',  repColor:'#5a5a7a',
+   desc:'AI Forgers flood the market with convincing fakes, raising value of authentic items.'},
+];
+
+const HYPE_EVENTS = [
+  {id:'stream',    title:'STREAMER PICKUP',      desc:'A major streamer played it live. Demand surging.', mult:1.8, worldEffect:null},
+  {id:'reddit',    title:'REDDIT THREAD',        desc:'/r/lostmedia thread hit 40k upvotes. Chaos.', mult:1.5, worldEffect:null},
+  {id:'copyright', title:'COPYRIGHT CLAIM',      desc:'A corporation wants this buried. That made it hotter.', mult:1.6, worldEffect:'copyright_heat'},
+  {id:'debate',    title:'AUTHENTICITY DEBATE',  desc:'Two major collectors fighting publicly. Drama sells.', mult:1.4, worldEffect:'trust_drop'},
+  {id:'sleuth',    title:'FORUM ARCHAEOLOGIST',  desc:'40-page thread posted. Obsession is spreading.', mult:1.7, worldEffect:null},
+  {id:'copycat',   title:'COPYCAT FLOOD',        desc:'Fakes everywhere. Originals gain scarcity premium.', mult:1.3, worldEffect:'market_fakes'},
+  {id:'news',      title:'NEWS COVERAGE',        desc:'Local news ran a segment. Boomers confused. Gen Z intrigued.', mult:1.5, worldEffect:null},
+  {id:'aiflood',   title:'AI FORGERY ALERT',     desc:'AI fakes flooding market. Real items now provably valuable.', mult:1.2, worldEffect:'ai_flood'},
+  {id:'doc',       title:'DOCUMENTARY PICKUP',   desc:'An indie doc is including this find. Prestige incoming.', mult:2.0, worldEffect:null},
+  {id:'panic',     title:'MORAL PANIC',          desc:'Politicians calling for removal. The Streisand Effect kicks in.', mult:1.9, worldEffect:'legal_heat'},
+  {id:'cult_rev',  title:'CULT REVELATION',      desc:'Signal Cult declared this "the key artifact." True believers mobilizing.', mult:1.6, worldEffect:'cult_surge'},
+];
+
+const WORLD_EVENTS = [
+  {id:'raid',      title:'⚠ COPYRIGHT RAID',    desc:'Syndicate agents seized 3 known dealer collections. Risk elevated.', effect:'copyright_heat', severity:'bad'},
+  {id:'leakdump',  title:'⚡ MASS LEAK DUMP',   desc:'Anonymous dump of 200 items hit the web. Market flooded. Rarity up.', effect:'rarity_spike', severity:'info'},
+  {id:'cultrise',  title:'🔮 CULT ASCENSION',   desc:'Signal Cult released a manifesto. Mythic items in high demand.', effect:'cult_surge', severity:'spooky'},
+  {id:'aiwave',    title:'🤖 AI FLOOD EVENT',   desc:'AI Forger collective released 500 fake tapes. Verification premium rises.', effect:'ai_flood', severity:'bad'},
+  {id:'estate',    title:'📦 MASS ESTATE SALE', desc:'A collector\'s entire archive hit auction. Prices dropping this week.', effect:'price_drop', severity:'info'},
+  {id:'streamer',  title:'📺 MEGA STREAM',      desc:'Top streamer did a 12hr lost media marathon. Interest at all-time high.', effect:'hype_surge', severity:'good'},
+];
+
+const LOG_POOL = [
+  {msg:'Signal Cult is watching the boards tonight.', type:'spooky'},
+  {msg:'Copyright Syndicate filed 3 takedowns this hour.', type:'bad'},
+  {msg:'Anonymous drop arrived at the dead drop point.', type:'info'},
+  {msg:'Elite Collector offering 2x on verified VHS.', type:'hype'},
+  {msg:'Trend Media is scouting for "cursed content."', type:'hype'},
+  {msg:'Server corruption detected. Back up your archives.', type:'bad'},
+  {msg:'Preservationist community praised a recent release.', type:'good'},
+  {msg:'Darknet chatter: a legendary tape resurfaced.', type:'spooky'},
+  {msg:'AI Forger collective went quiet. Suspicious.', type:'spooky'},
+  {msg:'New authentication tool rumored. Leaks everywhere.', type:'info'},
+  {msg:'A collector was raided at 3am. Stay careful.', type:'bad'},
+  {msg:'Rare BETA master tape spotted at a thrift store in Ohio.', type:'info'},
+  {msg:'Market crash on CD-R. Too many fakes.', type:'bad'},
+  {msg:'DAT tape prices at record high — researchers buying.', type:'hype'},
+  {msg:'Underground forum went dark. Backup your contacts.', type:'spooky'},
+];
+
+// ---- MISSION TEMPLATES ----
+const MISSION_TYPES = [
+  {
+    id:'recovery', label:'RECOVERY JOB', color:'var(--cyan)',
+    gen:(item) => ({
+      title:`Restore a ${item.format} artifact to under 20% corruption`,
+      desc:`Client needs a clean copy. Corruption must be ≤20%.`,
+      checkType:'recovery', targetId:item.id, targetFormat:item.format,
+      rewardMoney:800+Math.round(item.rarity*6), rewardRep:8, rewardFaction:{id:'preserv',amt:12},
+      deadline:5, type:'recovery',
+    })
+  },
+  {
+    id:'authenticate', label:'AUTHENTICATE JOB', color:'var(--purple)',
+    gen:(item) => ({
+      title:`Authenticate the ${item.era} ${item.format} artifact`,
+      desc:`A collector disputes it. Analyze and confirm its authenticity state.`,
+      checkType:'authenticate', targetId:item.id, targetFormat:item.format,
+      rewardMoney:600+Math.round(item.rarity*4), rewardRep:6, rewardFaction:{id:'preserv',amt:10},
+      deadline:4, type:'authenticate',
+    })
+  },
+  {
+    id:'sell_specific', label:'PRIVATE SALE JOB', color:'var(--green)',
+    gen:(item, buyerId) => {
+      const buyer = BUYERS.find(b=>b.id===buyerId)||BUYERS[0];
+      return {
+        title:`Sell a ${item.format} item to ${buyer.name}`,
+        desc:`${buyer.name} placed a private order. Sell any ${item.format} to them.`,
+        checkType:'sell_specific',
+        rewardMoney:500+Math.round(item.baseValue*0.4), rewardRep:5, rewardFaction:{id:buyer.id==='blackmarket'?'elite':'preserv',amt:8},
+        deadline:6, targetId:null, targetFormat:item.format, targetBuyer:buyer.id, type:'sell_specific',
+      };
+    }
+  },
+  {
+    id:'find_trait', label:'DEEP INVESTIGATION', color:'var(--amber)',
+    gen:() => {
+      const trait = pick(HIDDEN_TRAITS);
+      return {
+        title:`Find an artifact with hidden trait: ${trait.replace(/_/g,' ')}`,
+        desc:`A researcher needs proof this trait exists. Acquire and analyze.`,
+        checkType:'find_trait', targetTrait:trait,
+        rewardMoney:900, rewardRep:10, rewardFaction:{id:'cult',amt:15},
+        deadline:7, targetId:null, type:'find_trait',
+      };
+    }
+  },
+  {
+    id:'hoard', label:'COLLECTOR CONTRACT', color:'var(--amber)',
+    gen:() => {
+      const fmt = pick(FORMATS);
+      const count = rand(2,3);
+      return {
+        title:`Acquire ${count} ${fmt} artifacts for an elite collector`,
+        desc:`An anonymous buyer wants ${count} ${fmt} format items. Format matters, content doesn't.`,
+        checkType:'hoard', targetFormat:fmt, targetCount:count,
+        rewardMoney:700*count, rewardRep:12, rewardFaction:{id:'elite',amt:10},
+        deadline:8, type:'hoard',
+      };
+    }
+  },
+];
+
+// ---- SEED ITEMS (legendary starting content) ----
+function makeSeedItems() {
+  return [
+    {
+      id:'SEED_001', name:'1983 VHS — children\'s program (local broadcast)',
+      format:'VHS', era:'1983', genre:'children\'s program', condition:'burned label',
+      mystery:'missing creator identity',
+      auth:'mythic', corrupt:58, hype:25, rarity:92, traits:['backwards_speech'],
+      risk:'HIGH', baseValue:1240, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`Hand-labeled "SUNDAY FUN ZONE EP.12" — episode 12 of a show with no record of episodes 1-11. Audio reversed at timestamp 22:14. No broadcaster credit exists.`,
+    },
+    {
+      id:'SEED_002', name:'1997 FLOPPY — prototype game (unreleased beta)',
+      format:'FLOPPY', era:'1997', genre:'prototype game', condition:'incomplete',
+      mystery:'legal suppression history',
+      auth:'partial', corrupt:31, hype:18, rarity:85, traits:['missing_frames','encoded_audio'],
+      risk:'EXTREME', baseValue:980, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`Build tagged "DO NOT DISTRIBUTE — LEGAL HOLD." A scrapped platformer from a studio that dissolved in 1998 under lawsuit. Two of seven levels exist. The third file is encrypted.`,
+    },
+    {
+      id:'SEED_003', name:'1988 DAT — religious ceremony (undisclosed location)',
+      format:'DAT', era:'1988', genre:'religious ceremony', condition:'static noise',
+      mystery:'urban legend origin',
+      auth:'unknown', corrupt:44, hype:12, rarity:78, traits:['numeric_sequence'],
+      risk:'HIGH', baseValue:860, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`Audio-only recording. 74 minutes of tonal chanting overlaid with what engineers describe as a 40Hz sub-signal not present in the original recording environment. No ceremony matches known denominations.`,
+    },
+    {
+      id:'SEED_004', name:'2001 MiniDV — ARG fragment (unsolved puzzle)',
+      format:'MiniDV', era:'2001', genre:'ARG fragment', condition:'tape splice marks',
+      mystery:'ARG trail fragment',
+      auth:'authentic', corrupt:22, hype:40, rarity:88, traits:['embedded_glyph','redacted_segment'],
+      risk:'MEDIUM', baseValue:1100, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`Part of the infamous "PROJECT MERIDIAN" ARG that went dark in 2003. This tape contains what theorists call the "third key." The final 4 minutes are magnetically wiped. Community has been hunting this for 20 years.`,
+    },
+    {
+      id:'SEED_005', name:'1991 BETA — emergency broadcast (unscheduled override)',
+      format:'BETA', era:'1991', genre:'emergency broadcast', condition:'water damaged',
+      mystery:'unexplained visual anomaly',
+      auth:'mythic', corrupt:67, hype:8, rarity:96, traits:['ghost_signal','subliminal_content'],
+      risk:'EXTREME', baseValue:1580, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`A 3-minute emergency override that interrupted CBS affiliate WKXT on November 2, 1991. FCC has no record of the broadcast. The tape shows a figure at a podium speaking words that have never been transcribed — audio degrades into interference when attempts are made.`,
+    },
+    {
+      id:'SEED_006', name:'1979 VHS — surveillance feed (decommissioned facility)',
+      format:'VHS', era:'1979', genre:'surveillance feed', condition:'magnetic deterioration',
+      mystery:'classified origin',
+      auth:'authentic', corrupt:71, hype:5, rarity:82, traits:['redacted_segment','second_audio_track'],
+      risk:'HIGH', baseValue:920, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`Continuous 6-hour loop from a camera installed in what appears to be a government-adjacent corridor. Every 90 minutes, the feed cuts to 8 seconds of pure white. Provenance: FOIA request batch #44-C, never publicly acknowledged.`,
+    },
+    {
+      id:'SEED_007', name:'1994 CD-R — music bootleg (studio outtakes)',
+      format:'CD-R', era:'1994', genre:'music bootleg', condition:'hand-labeled',
+      mystery:'missing creator identity',
+      auth:'partial', corrupt:15, hype:32, rarity:74, traits:['encoded_audio'],
+      risk:'MEDIUM', baseValue:740, restored:0, analyzed:false, hyped:false, isSeed:true,
+      desc:`Sharpie-labeled "DO NOT COPY — SESSION 7." Studio outtakes from an anonymous 90s alt-rock session. Track 4 is 11 minutes long and contains what sounds like a second band recorded in another room bleeding through the channel. No watermarks or studio stamps present.`,
+    },
+  ];
+}
+
+// ---- MEMETIC EFFECT TABLE ----
+const MEMETIC_EFFECTS = {
+  panic: {
+    label:'MASS PANIC', color:'var(--red)',
+    desc:'This artifact triggered wide public panic when released.',
+    worldChange:(st)=>{ st.factionRep.copyright = clamp(st.factionRep.copyright-20,0,100); st.legalHeat=Math.min(100,st.legalHeat+25); }
+  },
+  obsession: {
+    label:'COLLECTOR MANIA', color:'var(--amber)',
+    desc:'Release of this item caused a collecting frenzy.',
+    worldChange:(st)=>{ st.marketDemand.VHS=Math.min(100,st.marketDemand.VHS+20); st.factionRep.elite=Math.min(100,st.factionRep.elite+15); }
+  },
+  cult_fandom: {
+    label:'CULT ADOPTION', color:'var(--purple)',
+    desc:'Signal Cult incorporated this into their doctrine.',
+    worldChange:(st)=>{ st.factionRep.cult=Math.min(100,st.factionRep.cult+25); st.marketDemand['DAT']=Math.min(100,(st.marketDemand['DAT']||50)+15); }
+  },
+  trend: {
+    label:'VIRAL TREND', color:'var(--pink)',
+    desc:'Trend Media made this mainstream. Your credibility took a hit.',
+    worldChange:(st)=>{ st.rep=clamp(st.rep-8,0,100); st.factionRep.trend=Math.min(100,st.factionRep.trend+20); }
+  },
+  crackdown: {
+    label:'LEGAL CRACKDOWN', color:'var(--red)',
+    desc:'This release triggered a legal crackdown. Risk increased.',
+    worldChange:(st)=>{ st.legalHeat=Math.min(100,st.legalHeat+40); st.factionRep.copyright=clamp(st.factionRep.copyright-30,0,100); }
+  },
+};
+
+// ---- UTILS ----
+const rand  = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick  = arr  => arr[rand(0,arr.length-1)];
+const clamp = (v,mn,mx) => Math.max(mn,Math.min(mx,v));
+const authColor = a => ({fake:'auth-fake',partial:'auth-partial',authentic:'auth-authentic',mythic:'auth-mythic',unknown:'auth-unknown'}[a]||'auth-unknown');
+const formatTag = f => ({VHS:'tag-vhs',BETA:'tag-beta',DAT:'tag-dat',FLOPPY:'tag-floppy','CD-R':'tag-cd',MiniDV:'tag-minidv',HDD:'tag-hdd'}[f]||'tag-cd');
+const stageName = (day, money) => {
+  if(money>=15000||day>=30) return {name:'MYTH CREATOR', tier:3};
+  if(money>=5000||day>=15)  return {name:'ARCHIVIST',    tier:2};
+  return                           {name:'DEALER',        tier:1};
+};
+
+// ---- MISSION CHECK (stateless, using stored checkType) ----
+function checkMission(m, item, buyerId) {
+  if(m.checkType==='recovery')     return item.id===m.targetId && item.corrupt<=20;
+  if(m.checkType==='authenticate') return item.id===m.targetId && item.analyzed;
+  if(m.checkType==='find_trait')   return item.analyzed && item.traits.includes(m.targetTrait);
+  if(m.checkType==='sell_specific') return item.format===m.targetFormat && buyerId===m.targetBuyer;
+  if(m.checkType==='hoard') {
+    const inv = state.inventory;
+    return inv.filter(i=>i.format===m.targetFormat).length >= m.targetCount;
+  }
+  return false;
+}
+
+// ---- ITEM GENERATOR ----
+function genItem(qualityMult=1.0, riskBonus=0) {
+  const format  = pick(FORMATS);
+  const era     = pick(ERAS);
+  const genre   = pick(GENRES);
+  const cond    = pick(CONDITIONS);
+  const myst    = pick(MYSTERY_LAYERS);
+  const auth    = pick(['fake','partial','partial','authentic','authentic','mythic','unknown','unknown']);
+  const corrupt = clamp(rand(10,85) - Math.round((qualityMult-1)*20), 5, 90);
+  const hype    = rand(5,35);
+  const rarity  = clamp(rand(20,95) + Math.round((qualityMult-1)*15), 10, 99);
+  const traits  = [];
+  if(Math.random()<0.35*qualityMult) traits.push(pick(HIDDEN_TRAITS));
+  if(Math.random()<0.15*qualityMult) traits.push(pick(HIDDEN_TRAITS.filter(t=>!traits.includes(t))));
+  const riskPool = ['LOW','MEDIUM','MEDIUM','HIGH','EXTREME'];
+  const riskIdx  = clamp(rand(0,4) + Math.round(riskBonus/20), 0, 4);
+  const risk     = riskPool[riskIdx];
+  const baseValue= Math.round((rarity*9)*(qualityMult)
+    + (auth==='authentic'?420:0)
+    + (auth==='mythic'?650:0)
+    + (format==='BETA'||format==='DAT'?220:0));
+  return {
+    id:'ITEM_'+Date.now()+'_'+rand(1000,9999),
+    name:`${era} ${format} — ${genre}`,
+    format, era, genre, condition:cond, mystery:myst,
+    auth, corrupt, hype, rarity, traits, risk, baseValue,
+    restored:0, analyzed:false, hyped:false,
+    desc:`${cond}. ${myst}. Origin: ${pick(['anonymous collector','studio estate','government archive','private collection','auction lot','dead web server','estate of a deceased archivist','unsolicited mail delivery'])}.`,
+  };
+}
+
+// ---- OFFER CALCULATION ----
+function calcOffer(item, buyer) {
+  let v = item.baseValue * (1 + item.hype/100) * (1 + item.restored*0.004);
+  if(buyer.id==='archivist')   { if(item.auth==='authentic') v*=1.9; if(item.auth==='fake') v*=0.4; }
+  if(buyer.id==='conspiracy')  { if(item.auth==='mythic'||item.auth==='unknown') v*=1.7; }
+  if(buyer.id==='creator')     { if(item.hype>50) v*=1.6; v*=(1+item.hype/150); }
+  if(buyer.id==='researcher')  { v*=(1+item.traits.length*0.35); if(item.analyzed) v*=1.3; }
+  if(buyer.id==='blackmarket') { if(item.rarity>75) v*=2.1; if(item.risk==='EXTREME') v*=1.4; }
+  if(buyer.id==='niche')       { v*=1.2; if(parseInt(item.era)<1990) v*=1.3; }
+  const hypeBonus = state.hypeEvents.slice(0,3).reduce((acc,e)=>acc*e.mult,1);
+  v *= hypeBonus;
+  const demandFactor = (state.marketDemand[item.format]||50)/50;
+  v *= demandFactor;
+  const fRep = state.factionRep;
+  if(buyer.id==='archivist'&&fRep.preserv>60) v*=1.1;
+  if(buyer.id==='blackmarket'&&fRep.elite>60) v*=1.1;
+  if(buyer.id==='conspiracy'&&fRep.cult>60) v*=1.1;
+  return Math.round(v);
+}
+
+// ---- MISSION GENERATOR ----
+function genMission() {
+  const inv = state.inventory;
+  const tpl = pick(MISSION_TYPES);
+  if(tpl.id==='recovery'||tpl.id==='authenticate') {
+    if(inv.length===0) return null;
+    return tpl.gen(pick(inv));
+  }
+  if(tpl.id==='sell_specific') {
+    return tpl.gen(genItem(), pick(BUYERS).id);
+  }
+  if(tpl.id==='hoard') {
+    return tpl.gen();
+  }
+  return tpl.gen();
+}
+
+// ---- UPGRADES ----
+const UPGRADES = [
+  {id:'capacity2', name:'STORAGE EXPANSION I',  icon:'📦', desc:'Inventory capacity: 12 → 18 slots.', cost:1200,
+    apply:(st)=>{ st.capacity=18; }},
+  {id:'capacity3', name:'STORAGE EXPANSION II', icon:'🗄️', desc:'Inventory capacity: 18 → 24 slots. Requires Expansion I.', cost:2500, requires:'capacity2',
+    apply:(st)=>{ st.capacity=24; }},
+  {id:'hyper_hype',  name:'HYPE ENGINE',     icon:'🔥', desc:'Hype Boost now costs $100 and grants +5 extra hype.', cost:800, apply:()=>{}},
+  {id:'rep_shield',  name:'REP INSULATOR',   icon:'🛡️', desc:'Daily reputation drain reduced to 0.', cost:1500, apply:()=>{}},
+  {id:'heat_sink',   name:'LEGAL HEAT SINK', icon:'❄️', desc:'Legal heat decays 2× faster each day.', cost:900, apply:()=>{}},
+  {id:'analyst_kit', name:'ANALYST KIT',     icon:'🔬', desc:'Analysis starts with +20 to all sliders. Better trait discovery.', cost:700, apply:()=>{}},
+  {id:'insider_tip', name:'INSIDER NETWORK', icon:'📡', desc:'Browse shows 5 items instead of 2-4. Better intel.', cost:1800, apply:()=>{}},
+];
+
+// ---- STATE ----
+function makeInitialState() {
+  return {
+    money: 800,
+    day: 1,
+    rep: 50,
+    inventory: [],
+    capacity: 12,
+    selectedItem: null,
+    logs: [
+      {msg:'Signal locked. Establishing connection to underground network...', type:'spooky', day:1},
+      {msg:'No artifacts on hand. Use ACQUIRE to browse sources and build your collection.', type:'info', day:1},
+      {msg:'Missions available in the MISSIONS tab. Contracts expire by deadline.', type:'info', day:1},
+      {msg:'TIP: Restore artifacts to reduce corruption. Analyze to discover hidden traits.', type:'info', day:1},
+      {msg:'TIP: Press ? or click HELP to read the full dealer codex.', type:'info', day:1},
+    ],
+    hypeEvents: [],
+    worldEvents: [],
+    toasts: [],
+    showModal: false,
+    selectedSource: null,
+    modalItems: [],
+    modalPreviewId: null,
+    minigame: null,
+    activeBuyer: null,
+    missions: [],
+    pendingDecision: null,
+    showHelp: false,
+    rightTab: 'factions',
+    factionRep: { preserv:40, elite:30, cult:25, copyright:20, trend:35, ai:10 },
+    marketDemand: { VHS:60, BETA:55, DAT:50, FLOPPY:45, 'CD-R':55, MiniDV:40, HDD:50 },
+    legalHeat: 0,
+    memeticHistory: [],
+    totalSold: 0,
+    totalEarned: 0,
+    negotiating: null,
+    invSort: 'default',
+    invFilter: 'all',
+    upgrades: { capacity2:false, capacity3:false, hyper_hype:false, rep_shield:false, heat_sink:false, analyst_kit:false, insider_tip:false },
+    gameOver: false,
+    gameWon: false,
+  };
+}
+
+let state = makeInitialState();
+
+// ---- SAVE / LOAD ----
+function saveGame() {
+  try {
+    const save = {...state, toasts:[], pendingDecision:null, showModal:false, showHelp:false};
+    localStorage.setItem('lmd_save', JSON.stringify(save));
+    showToast('Game saved.','info');
+  } catch(e){ showToast('Save failed.','bad'); }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem('lmd_save');
+    if(!raw) { showToast('No save found.','bad'); return; }
+    const saved = JSON.parse(raw);
+    state = {...makeInitialState(), ...saved, toasts:[], pendingDecision:null, showModal:false, showHelp:false};
+    showToast('Game loaded.','good');
+    render();
+  } catch(e){ showToast('Load failed.','bad'); }
+}
+
+function resetGame() {
+  if(!confirm('Reset all progress and start a new game? This cannot be undone.')) return;
+  try { localStorage.removeItem('lmd_save'); } catch(e){}
+  state = makeInitialState();
+  initMissions();
+  showToast('New game started.','info');
+  render();
+}
+
+// ---- UPGRADE PURCHASE ----
+function buyUpgrade(id) {
+  const u = UPGRADES.find(x=>x.id===id);
+  if(!u||state.upgrades[id]) return;
+  if(u.requires && !state.upgrades[u.requires]) { showToast('Prerequisite not met!','bad'); return; }
+  if(state.money < u.cost) { showToast('Not enough funds!','bad'); return; }
+  state.money -= u.cost;
+  state.upgrades[id] = true;
+  u.apply(state);
+  log(`Upgrade purchased: ${u.name}`, 'good');
+  showToast(`${u.icon} ${u.name} activated!`, 'good');
+  render();
+}
+
+// ---- WIN/LOSE CHECK ----
+function checkEndgame() {
+  if(state.gameOver || state.gameWon) return;
+  if(state.money >= 25000) {
+    state.gameWon = true;
+    log('YOU DID IT. $25,000 archived. You are a MYTH CREATOR.', 'good');
+    render(); return;
+  }
+  if(state.day >= 5 && state.money < 50 && state.inventory.length === 0) {
+    state.gameOver = true;
+    log('Out of funds. Out of artifacts. The Syndicate wins.', 'bad');
+    render();
+  }
+}
+
+// ---- ENDGAME OVERLAY ----
+function renderEndgame() {
+  if(state.gameWon) {
+    return `
+      <div class="endgame-overlay">
+        <div class="endgame-box">
+          <div class="endgame-title" style="color:var(--green);">MYTH CREATOR</div>
+          <div style="font-family:'VT323',monospace;font-size:16px;color:var(--text3);letter-spacing:2px;margin-bottom:12px;">YOU REACHED $25,000</div>
+          <div class="endgame-sub">The underground archive syndicate recognizes your work.<br>History has been preserved. Or sold. Same thing, right?</div>
+          <div class="endgame-stats">
+            <div class="endgame-stat"><div class="endgame-stat-label">Final Balance</div><div class="endgame-stat-val">$${state.money.toLocaleString()}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Days Survived</div><div class="endgame-stat-val" style="color:var(--cyan);">${state.day}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Items Sold</div><div class="endgame-stat-val" style="color:var(--amber);">${state.totalSold}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Total Earned</div><div class="endgame-stat-val">$${(state.totalEarned||0).toLocaleString()}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Rep Score</div><div class="endgame-stat-val" style="color:var(--amber);">${state.rep}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Memetic Events</div><div class="endgame-stat-val" style="color:var(--purple);">${state.memeticHistory.length}</div></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" id="btn-new-game" style="font-size:18px;padding:7px 24px;flex:1;">▶ NEW GAME</button>
+            <button class="btn" id="btn-save-end" style="font-size:14px;padding:7px 14px;color:var(--text3);border-color:var(--border2);">SAVE</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  if(state.gameOver) {
+    return `
+      <div class="endgame-overlay">
+        <div class="endgame-box">
+          <div class="endgame-title" style="color:var(--red);">SIGNAL LOST</div>
+          <div style="font-family:'VT323',monospace;font-size:16px;color:var(--text3);letter-spacing:2px;margin-bottom:12px;">OPERATION TERMINATED</div>
+          <div class="endgame-sub">No funds. No artifacts. The Copyright Syndicate wins this round.<br>Your collection has been seized and buried in a legal vault.</div>
+          <div class="endgame-stats">
+            <div class="endgame-stat"><div class="endgame-stat-label">Days Survived</div><div class="endgame-stat-val" style="color:var(--cyan);">${state.day}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Items Sold</div><div class="endgame-stat-val" style="color:var(--amber);">${state.totalSold}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Peak Rep</div><div class="endgame-stat-val" style="color:var(--amber);">${state.rep}</div></div>
+            <div class="endgame-stat"><div class="endgame-stat-label">Total Earned</div><div class="endgame-stat-val">$${(state.totalEarned||0).toLocaleString()}</div></div>
+          </div>
+          <button class="btn btn-primary" id="btn-new-game" style="font-size:18px;padding:7px 24px;width:100%;">▶ TRY AGAIN</button>
+        </div>
+      </div>
+    `;
+  }
+  return '';
+}
+
+// Seed missions
+function initMissions() {
+  for(let i=0;i<2;i++){
+    const m = genMission();
+    if(m) state.missions.push({...m, id:'M_'+Date.now()+i, daysLeft:m.deadline});
+  }
+}
+initMissions();
+
+// ===================== RENDER =====================
+
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="vhs-glitch">
+      ${renderHeader()}
+      ${renderTicker()}
+      <div class="main-grid">
+        ${renderLeftPanel()}
+        ${renderCenter()}
+        ${renderRightPanel()}
+      </div>
+      ${renderLog()}
+    </div>
+    ${state.showModal ? renderModal() : ''}
+    ${state.pendingDecision ? renderDecisionModal() : ''}
+    ${state.showHelp ? renderHelpModal() : ''}
+    ${renderToasts()}
+    ${(state.gameOver||state.gameWon) ? renderEndgame() : ''}
+  `;
+  attachEvents();
+  scrollLog();
+}
+
+function renderHeader() {
+  const stage = stageName(state.day, state.money);
+  return `
+    <div class="header">
+      <div>
+        <div class="logo">LOST MEDIA <span>DEALER</span></div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:2px;margin-top:1px;">
+          ▓ UNDERGROUND ARCHIVE SYNDICATE ▓ &nbsp;
+          <span class="stage-display">ROLE: <span class="stage-name">${stage.name}</span></span>
+        </div>
+      </div>
+      <div class="header-stats">
+        <div style="display:flex;align-items:center;gap:5px;"><div class="rec-dot"></div><span style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">LIVE</span></div>
+        <div class="stat-chip"><span style="color:var(--text3);">$</span><span class="val money">${state.money.toLocaleString()}</span></div>
+        <div class="header-bar-wrap">
+          <div class="header-bar-label">REP ${state.rep}</div>
+          <div class="header-bar" style="width:60px;"><div class="header-bar-fill" style="width:${state.rep}%;background:var(--amber);"></div></div>
+        </div>
+        <div class="header-bar-wrap">
+          <div class="header-bar-label">HEAT ${state.legalHeat}</div>
+          <div class="header-bar" style="width:60px;"><div class="header-bar-fill" style="width:${state.legalHeat}%;background:${state.legalHeat>60?'var(--red)':state.legalHeat>30?'var(--amber)':'var(--green2)'};"></div></div>
+        </div>
+        <div class="stat-chip"><span style="color:var(--text3);">DAY</span><span class="val day">${state.day}</span></div>
+        <button class="btn btn-help" id="btn-help">? HELP</button>
+        <button class="btn" id="btn-save" style="font-size:12px;padding:2px 7px;color:var(--text3);border-color:var(--border2);">SAVE</button>
+        <button class="btn" id="btn-load" style="font-size:12px;padding:2px 7px;color:var(--text3);border-color:var(--border2);">LOAD</button>
+        <button class="btn" id="btn-reset" style="font-size:12px;padding:2px 7px;color:var(--red);border-color:var(--red2);">RESET</button>
+        <button class="btn btn-primary" id="btn-advance" style="font-size:13px;padding:3px 10px;">NEXT DAY ▶</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTicker() {
+  const dm = state.marketDemand;
+  const tickerItems = [
+    `VHS <span class="${dm.VHS>55?'up':'down'}">${dm.VHS>55?'▲':'▼'}${Math.abs(dm.VHS-50)}%</span>`,
+    `DAT <span class="${dm.DAT>55?'up':'down'}">${dm.DAT>55?'▲':'▼'}${Math.abs(dm.DAT-50)}%</span>`,
+    `BETA <span class="${dm.BETA>55?'up':'down'}">${dm.BETA>55?'▲':'▼'}${Math.abs(dm.BETA-50)}%</span>`,
+    `HYPE MARKET: <span class="up">ACTIVE</span>`,
+    `FLOPPY <span class="${dm.FLOPPY>55?'up':'down'}">${dm.FLOPPY>55?'▲':'▼'}${Math.abs(dm.FLOPPY-50)}%</span>`,
+    `LEGAL HEAT: <span class="${state.legalHeat>50?'down':state.legalHeat>25?'warn':'up'}">${state.legalHeat<25?'LOW':state.legalHeat<60?'MODERATE':'CRITICAL'}</span>`,
+    `SIGNAL CULT: <span class="warn">WATCHING</span>`,
+    `HDD <span class="${dm.HDD>55?'up':'down'}">${dm.HDD>55?'▲':'▼'}${Math.abs(dm.HDD-50)}%</span>`,
+    `CD-R <span class="${dm['CD-R']>55?'up':'down'}">${dm['CD-R']>55?'▲':'▼'}${Math.abs(dm['CD-R']-50)}%</span>`,
+    `MiniDV <span class="${dm.MiniDV>55?'up':'down'}">${dm.MiniDV>55?'▲':'▼'}${Math.abs(dm.MiniDV-50)}%</span>`,
+    `INVENTORY: ${state.inventory.length}/${state.capacity} SLOTS`,
+    `ACTIVE MISSIONS: ${state.missions.filter(m=>!m.completed).length}`,
+    `TOTAL EARNED: $${(state.totalEarned||0).toLocaleString()}`,
+    `WIN TARGET: $25,000 &nbsp; PROGRESS: ${Math.round(Math.min(100,state.money/250))}%`,
+  ];
+  return `<div class="ticker"><span class="ticker-inner">${tickerItems.map(i=>`<span>◈</span> ${i} &nbsp;&nbsp;`).join('')}</span></div>`;
+}
+
+// ---- LEFT: INVENTORY ----
+function renderLeftPanel() {
+  let inv = [...state.inventory];
+  if(state.invFilter !== 'all') inv = inv.filter(i=>i.format===state.invFilter);
+  if(state.invSort==='value')   inv = inv.sort((a,b)=>b.baseValue-a.baseValue);
+  else if(state.invSort==='rarity')  inv = inv.sort((a,b)=>b.rarity-a.rarity);
+  else if(state.invSort==='corrupt') inv = inv.sort((a,b)=>a.corrupt-b.corrupt);
+  else if(state.invSort==='hype')    inv = inv.sort((a,b)=>b.hype-a.hype);
+  else if(state.invSort==='scan')    inv = inv.sort((a,b)=>Number(b.analyzed)-Number(a.analyzed));
+  const allInv = state.inventory;
+  const pct = Math.round(allInv.length/state.capacity*100);
+  const formats = [...new Set(allInv.map(i=>i.format))];
+  return `
+    <div class="panel">
+      <div class="panel-title"><div class="dot"></div>INVENTORY <span style="font-size:12px;color:var(--text3);">[${allInv.length}/${state.capacity}]</span>
+        <button class="btn" id="btn-acquire" style="margin-left:auto;font-size:12px;padding:2px 8px;color:var(--cyan);border-color:var(--cyan2);">+ ACQUIRE</button>
+      </div>
+      <div class="capacity-bar"><div class="capacity-fill" style="width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--amber)':'var(--green2)'};"></div></div>
+      <div style="font-size:9px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:5px;margin-top:2px;">${pct}% capacity used</div>
+      <div class="inv-controls">
+        <span style="font-size:9px;color:var(--text3);font-family:'Space Mono',monospace;align-self:center;">SORT:</span>
+        <button class="inv-ctrl-btn ${state.invSort==='default'?'active':''}" data-inv-sort="default">DEF</button>
+        <button class="inv-ctrl-btn ${state.invSort==='value'?'active':''}" data-inv-sort="value">$$$</button>
+        <button class="inv-ctrl-btn ${state.invSort==='rarity'?'active':''}" data-inv-sort="rarity">RARE</button>
+        <button class="inv-ctrl-btn ${state.invSort==='corrupt'?'active':''}" data-inv-sort="corrupt">CLEAN</button>
+        <button class="inv-ctrl-btn ${state.invSort==='hype'?'active':''}" data-inv-sort="hype">HYPE</button>
+        <button class="inv-ctrl-btn ${state.invSort==='scan'?'active':''}" data-inv-sort="scan">SCAN</button>
+      </div>
+      ${formats.length>1?`
+      <div class="inv-controls" style="margin-bottom:6px;">
+        <span style="font-size:9px;color:var(--text3);font-family:'Space Mono',monospace;align-self:center;">FMT:</span>
+        <button class="inv-ctrl-btn ${state.invFilter==='all'?'active':''}" data-inv-filter="all">ALL</button>
+        ${formats.map(f=>`<button class="inv-ctrl-btn ${state.invFilter===f?'active':''}" data-inv-filter="${f}">${f}</button>`).join('')}
+      </div>`:''}
+      <div class="scrollable">
+        ${inv.length===0
+          ? `<div class="empty-inv">no items match filter<br>adjust filter or acquire<br>more lost media artifacts.</div>`
+          : inv.map(item=>renderInvItem(item)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderInvItem(item) {
+  const sel = state.selectedItem && state.selectedItem.id===item.id;
+  return `
+    <div class="inventory-item ${sel?'selected':''}" data-id="${item.id}">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
+        <span class="item-format-tag ${formatTag(item.format)}">${item.format}</span>
+        ${item.hyped?'<span class="badge-new">HOT</span>':''}
+        ${item.isSeed?'<span class="badge-seed">LEGEND</span>':''}
+        ${item.analyzed?'<span style="font-family:VT323,monospace;font-size:11px;color:var(--text3);">✓scan</span>':''}
+      </div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-meta">
+        <span class="meta-bit ${authColor(item.auth)}">${item.auth.toUpperCase()}</span>
+        <span class="meta-bit ${item.corrupt>60?'danger':item.corrupt>35?'warn':''}">${item.corrupt}% corrupt</span>
+        <span class="meta-bit ${item.rarity>70?'good':''}">${item.rarity}% rare</span>
+      </div>
+      <div style="margin-top:3px;">
+        <div class="mini-bar"><div class="mini-bar-fill bar-corrupt" style="width:${item.corrupt}%"></div></div>
+        <div class="mini-bar"><div class="mini-bar-fill bar-auth" style="width:${{authentic:90,partial:50,mythic:70,fake:10,unknown:30}[item.auth]||30}%"></div></div>
+        <div class="mini-bar"><div class="mini-bar-fill bar-hype" style="width:${Math.min(100,item.hype)}%"></div></div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- CENTER: DETAIL + MINIGAME + HYPE ----
+function renderCenter() {
+  const item = state.selectedItem;
+  return `
+    <div class="center-panel">
+      <div class="detail-box">
+        <div class="noise"></div>
+        ${item ? renderItemDetail(item) : `<div class="no-item">▓▒░ SELECT AN ITEM FROM INVENTORY ░▒▓<br><br>Choose a media artifact to inspect,<br>analyze, restore, and sell.<br><br><span style="color:var(--text3);font-size:10px;">${state.inventory.length} artifacts in possession</span><br><br><span style="color:var(--text3);font-size:9px;font-family:'Space Mono',monospace;">GOAL: Reach $25,000 to win<br>Press ? or HELP for dealer codex</span></div>`}
+      </div>
+      ${state.minigame ? renderMinigame() : ''}
+      ${state.negotiating ? renderNegotiation() : ''}
+      ${state.worldEvents.length>0 ? renderWorldEvents() : ''}
+      ${state.hypeEvents.length>0 ? renderHypeEvents() : ''}
+    </div>
+  `;
+}
+
+function renderItemDetail(item) {
+  const buyers = BUYERS.map(b=>({...b, offer:calcOffer(item,b)}));
+  const missionMatch = state.missions.filter(m=>!m.completed && (m.targetId===item.id||m.targetFormat===item.format||(m.checkType==='find_trait'&&item.analyzed&&item.traits.includes(m.targetTrait))));
+  return `
+    <div class="detail-era">◈ ERA: ${item.era} &nbsp;|&nbsp; FORMAT: ${item.format} &nbsp;|&nbsp; RISK: <span style="color:${item.risk==='EXTREME'?'var(--red)':item.risk==='HIGH'?'var(--amber)':'var(--text3)'}">${item.risk}</span>
+    &nbsp;|&nbsp; VALUE: <span style="color:var(--green);">$${item.baseValue}</span></div>
+    <div class="detail-title">${item.name}</div>
+    <div class="detail-desc">"${item.desc}"</div>
+    ${missionMatch.length>0?`<div style="margin-bottom:6px;">${missionMatch.map(m=>`<span style="font-family:'VT323',monospace;font-size:12px;color:var(--pink);border:1px solid #8c2a5a;padding:1px 6px;margin-right:4px;">📋 MISSION MATCH</span>`).join('')}</div>`:''}
+    ${item.traits.length>0?`<div style="margin-bottom:8px;">${item.traits.map(t=>`<span class="hidden-trait-badge">⚠ ${t.replace(/_/g,' ')}</span>`).join('')}</div>`:''}
+    ${item.memeticEffect?`<span class="memetic-tag">⚡ MEMETIC: ${MEMETIC_EFFECTS[item.memeticEffect]?.label||item.memeticEffect}</span>`:''}
+    <div class="detail-stats-grid">
+      <div class="dstat">
+        <div class="dstat-label">AUTHENTICITY</div>
+        <div class="dstat-val ${authColor(item.auth)}">${item.auth.toUpperCase()}</div>
+      </div>
+      <div class="dstat">
+        <div class="dstat-label">CORRUPTION</div>
+        <div class="dstat-val" style="color:${item.corrupt>60?'var(--red)':'var(--amber)'}">${item.corrupt}%</div>
+      </div>
+      <div class="dstat">
+        <div class="dstat-label">RARITY</div>
+        <div class="dstat-val" style="color:${item.rarity>75?'var(--green)':'var(--text2)'}">${item.rarity}%</div>
+      </div>
+      <div class="dstat">
+        <div class="dstat-label">HYPE</div>
+        <div class="dstat-val" style="color:var(--amber)">${item.hype}</div>
+      </div>
+      <div class="dstat">
+        <div class="dstat-label">RESTORED</div>
+        <div class="dstat-val" style="color:${item.restored>60?'var(--red)':'var(--cyan)'}">${item.restored}%</div>
+      </div>
+      <div class="dstat">
+        <div class="dstat-label">SCAN STATUS</div>
+        <div class="dstat-val" style="color:${item.analyzed?'var(--green)':'var(--text3)'}">${item.analyzed?'DONE':'PENDING'}</div>
+      </div>
+    </div>
+    ${renderWaveform()}
+    <hr class="separator">
+    <div class="section-label">ACTIONS</div>
+    <div class="actions-row" style="margin-bottom:10px;">
+      <button class="btn btn-restore ${state.minigame?'btn-disabled':''}" data-action="restore" title="Reduce corruption via minigame">▶ RESTORE</button>
+      <button class="btn btn-analyze ${item.analyzed?'btn-disabled':''}" data-action="analyze" title="Discover hidden traits and confirm authenticity">${item.analyzed?'✓ ANALYZED':'◈ ANALYZE'}</button>
+      <button class="btn btn-leak" data-action="leak" title="Leak item publicly for hype (decision modal)">⚡ LEAK</button>
+      <button class="btn" data-action="hype_boost" style="color:var(--amber);border-color:var(--amber2);" title="Paid hype campaign: +hype, +Trend rep">🔥 HYPE ($${state.upgrades&&state.upgrades.hyper_hype?100:200})</button>
+      <button class="btn btn-destroy" data-action="destroy" title="Permanently delete artifact">✕ DESTROY</button>
+    </div>
+    <hr class="separator">
+    <div class="section-label">SELL TO BUYER</div>
+    <div class="scrollable" style="max-height:190px;">
+      ${buyers.map(b=>renderBuyerRow(b,item)).join('')}
+    </div>
+  `;
+}
+
+function renderBuyerRow(buyer, item) {
+  const isFakeToArchivist = buyer.id==='archivist' && item.auth==='fake';
+  return `
+    <div class="buyer-item" style="${isFakeToArchivist?'border-color:var(--red2);background:rgba(255,60,90,0.04);':''}">
+      <div class="buyer-icon">${buyer.icon}</div>
+      <div class="buyer-info">
+        <div class="buyer-name">${buyer.name}</div>
+        <div class="buyer-desc">${buyer.tip}</div>
+        ${isFakeToArchivist?`<div style="font-size:10px;color:var(--red);font-family:'Space Mono',monospace;">⚠ FAKE detected — REP PENALTY</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div class="buyer-offer" style="color:${isFakeToArchivist?'var(--red)':'var(--green)'};">$${buyer.offer.toLocaleString()}</div>
+        <div style="display:flex;gap:4px;margin-top:3px;justify-content:flex-end;">
+          <button class="btn btn-sell" data-sell="${buyer.id}" data-itemid="${item.id}" style="font-size:12px;padding:2px 8px;">SELL</button>
+          <button class="btn" data-negotiate="${buyer.id}" data-itemid="${item.id}" style="font-size:12px;padding:2px 8px;color:var(--amber);border-color:var(--amber2);">NEG.</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWaveform() {
+  const bars = Array.from({length:38},(_,i)=>{
+    const h = Math.round(8+Math.abs(Math.sin(i*0.8+Date.now()*0.001))*26);
+    return `<div class="wave-bar" style="height:${h}px"></div>`;
+  });
+  return `<div class="waveform">${bars.join('')}</div>`;
+}
+
+function renderMinigame() {
+  const mg = state.minigame;
+  const item = state.selectedItem;
+  if(!item) return '';
+
+  if(mg.type==='restore') {
+    const isGame  = item.format==='FLOPPY'||item.genre==='prototype game';
+    const isAudio = item.format==='DAT'||item.genre==='music bootleg';
+    let title = '▓ VHS TRACKING REPAIR ▓';
+    let hint  = 'Click STABILIZE rapidly to lock the signal. Higher = more restoration. Confirm when ready.';
+    if(isGame)  { title='▓ SECTOR RECONSTRUCTION ▓'; hint='Rebuild corrupted data sectors. Higher progress = more recovery. Confirm to apply.'; }
+    if(isAudio) { title='▓ AUDIO WAVEFORM REPAIR ▓'; hint='Click to filter noise. Higher progress = less corruption. Confirm when done.'; }
+    const overRestoreWarn = item.restored>40;
+    const reduction = Math.round(mg.progress*0.38);
+    return `
+      <div class="minigame-area">
+        <div class="minigame-title">${title}</div>
+        ${overRestoreWarn?`<div style="font-size:10px;color:var(--amber);font-family:'Space Mono',monospace;margin-bottom:6px;">⚠ WARNING: ${item.restored}% restored. Over-restoration (>65%) risks authenticity downgrade.</div>`:''}
+        <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:7px;">${hint}</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:7px;">
+          <div class="tool-label">SIGNAL LOCK</div>
+          <div class="progress-bar-outer" style="flex:1;">
+            <div class="progress-bar-fill" style="width:${mg.progress}%;"></div>
+          </div>
+          <div style="font-family:VT323,monospace;font-size:17px;color:${mg.progress>80?'var(--amber)':'var(--green)'};">${mg.progress}%</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:5px;">
+          Estimated corruption reduction: <span style="color:var(--cyan);font-family:VT323,monospace;font-size:16px;">-${reduction}%</span>
+          &nbsp;→ Result: <span style="color:var(--green);font-family:VT323,monospace;font-size:16px;">${Math.max(2,item.corrupt-reduction)}%</span>
+        </div>
+        <div class="click-zone" id="mg-click">▶ STABILIZE ◀</div>
+        <div style="margin-top:7px;display:flex;gap:6px;">
+          <button class="btn btn-restore" id="mg-finish" style="font-size:13px;">CONFIRM RESTORATION</button>
+          <button class="btn" id="mg-cancel" style="color:var(--text3);border-color:var(--border2);font-size:13px;">CANCEL</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if(mg.type==='analyze') {
+    const conf = Math.round((mg.noise+(mg.freq||50)+(mg.phase||50))/3);
+    return `
+      <div class="minigame-area">
+        <div class="minigame-title">◈ SIGNAL ANALYSIS ◈</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:9px;">Adjust all three filters to maximize confidence. Higher = better trait discovery & authenticity reveal.</div>
+        <div class="tool-row">
+          <div class="tool-label">NOISE FILTER</div>
+          <input type="range" min="0" max="100" value="${mg.noise}" id="mg-noise">
+          <div class="tool-val">${mg.noise}</div>
+        </div>
+        <div class="tool-row">
+          <div class="tool-label">FREQ SWEEP</div>
+          <input type="range" min="0" max="100" value="${mg.freq}" id="mg-freq">
+          <div class="tool-val">${mg.freq}</div>
+        </div>
+        <div class="tool-row">
+          <div class="tool-label">PHASE ALIGN</div>
+          <input type="range" min="0" max="100" value="${mg.phase||50}" id="mg-phase">
+          <div class="tool-val">${mg.phase||50}</div>
+        </div>
+        <div style="margin:7px 0;font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;">
+          Analysis confidence: <span style="color:var(--purple);font-family:VT323,monospace;font-size:17px;">${conf}%</span>
+          &nbsp;&nbsp; Hidden trait chance: <span style="color:${conf>60?'var(--green)':'var(--amber)'};font-family:VT323,monospace;font-size:17px;">${conf>60?'HIGH':'LOW'}</span>
+          &nbsp;&nbsp; Auth reveal: <span style="color:${conf>65?'var(--green)':'var(--text3)'};font-family:VT323,monospace;font-size:17px;">${conf>65?'YES':'NO'}</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-analyze" id="mg-finish" style="font-size:13px;">RUN SCAN</button>
+          <button class="btn" id="mg-cancel" style="color:var(--text3);border-color:var(--border2);font-size:13px;">CANCEL</button>
+        </div>
+      </div>
+    `;
+  }
+  return '';
+}
+
+function renderNegotiation() {
+  const neg = state.negotiating;
+  if(!neg) return '';
+  const buyer = BUYERS.find(b=>b.id===neg.buyerId);
+  if(!buyer) return '';
+  return `
+    <div class="negotiate-box">
+      <div class="negotiate-title">◈ NEGOTIATION: ${buyer.name.toUpperCase()}</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:6px;">
+        Current offer: <span style="color:var(--green);font-family:VT323,monospace;font-size:17px;">$${neg.currentOffer.toLocaleString()}</span>
+        &nbsp; Rounds left: <span style="color:var(--amber);font-family:VT323,monospace;font-size:17px;">${neg.rounds}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:4px;">Counter: 40% chance buyer accepts, 30% partial, 30% rejects.</div>
+      <div class="counter-btns">
+        <button class="btn" data-neg-action="counter10" style="color:var(--amber);border-color:var(--amber2);font-size:13px;">COUNTER +10%</button>
+        <button class="btn" data-neg-action="counter25" style="color:var(--amber);border-color:var(--amber2);font-size:13px;">COUNTER +25%</button>
+        <button class="btn btn-sell" data-neg-action="accept" style="font-size:13px;">ACCEPT $${neg.currentOffer.toLocaleString()}</button>
+        <button class="btn btn-destroy" data-neg-action="walk" style="font-size:13px;">WALK AWAY</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderHypeEvents() {
+  return `
+    <div class="panel" style="background:rgba(255,200,68,0.03);">
+      <div class="panel-title"><div class="dot" style="background:var(--amber);animation:blink 0.8s ease-in-out infinite;"></div>ACTIVE HYPE EVENTS</div>
+      ${state.hypeEvents.slice(0,3).map(e=>`
+        <div class="hype-event">
+          <div class="hype-event-title">⚡ ${e.title}</div>
+          <div class="hype-event-desc">${e.desc} &nbsp; <span style="color:var(--green)">+${Math.round((e.mult-1)*100)}% value</span></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderWorldEvents() {
+  return `
+    <div class="panel" style="background:rgba(255,60,90,0.03);">
+      <div class="panel-title"><div class="dot" style="background:var(--red);"></div>WORLD EVENTS</div>
+      ${state.worldEvents.slice(0,2).map(e=>`
+        <div class="world-event">
+          <div class="world-event-title">${e.title}</div>
+          <div class="world-event-desc">${e.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ---- RIGHT PANEL ----
+function renderRightPanel() {
+  const tab = state.rightTab;
+  return `
+    <div class="panel">
+      <div class="tab-row">
+        <div class="tab ${tab==='factions'?'active':''}" data-tab="factions">FACTIONS</div>
+        <div class="tab ${tab==='missions'?'active':''}" data-tab="missions">JOBS${state.missions.filter(m=>!m.completed).length>0?` (${state.missions.filter(m=>!m.completed).length})`:''}</div>
+        <div class="tab ${tab==='market'?'active':''}" data-tab="market">MARKET</div>
+        <div class="tab ${tab==='stats'?'active':''}" data-tab="stats">SHOP</div>
+        <div class="tab ${tab==='history'?'active':''}" data-tab="history">EVENTS</div>
+      </div>
+      ${tab==='factions' ? renderFactionsTab() : ''}
+      ${tab==='missions' ? renderMissionsTab() : ''}
+      ${tab==='market'   ? renderMarketTab()   : ''}
+      ${tab==='stats'    ? renderShopTab()     : ''}
+      ${tab==='history'  ? renderHistoryTab()  : ''}
+    </div>
+  `;
+}
+
+function renderFactionsTab() {
+  return `
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:8px;line-height:1.5;">
+      Faction reputation affects pricing, missions, and world events.
+    </div>
+    ${FACTIONS.map(f=>{
+      const rep = state.factionRep[f.id]||0;
+      const repLabel = rep>70?'ALLIED':rep>40?'NEUTRAL':rep>20?'COLD':'HOSTILE';
+      return `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+            <span class="faction-chip ${f.cls}">${f.name}</span>
+            <span style="font-family:'VT323',monospace;font-size:13px;color:${rep>70?'var(--green)':rep>40?'var(--text2)':rep>20?'var(--amber)':'var(--red)'};">${repLabel} ${rep}</span>
+          </div>
+          <div class="faction-rep-bar"><div class="faction-rep-fill" style="width:${rep}%;background:${f.repColor};opacity:0.6;"></div></div>
+          <div style="font-size:9px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:2px;line-height:1.4;">${f.desc}</div>
+        </div>
+      `;
+    }).join('')}
+    <hr class="separator">
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.8;">
+      ◈ PRESERVE → Sell to archivists<br>
+      ◈ LEAK publicly → Trend Media likes you<br>
+      ◈ MYTHIC items → Signal Cult rep<br>
+      ◈ High legal heat → Copyright Syndicate watches<br>
+      ◈ Fakes sold → Reputation with everyone drops
+    </div>
+  `;
+}
+
+function renderMissionsTab() {
+  const active = state.missions.filter(m=>!m.completed);
+  const done = state.missions.filter(m=>m.completed && !m.expired);
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">${active.length} active contracts</div>
+      <button class="btn btn-mission" id="btn-gen-mission" style="font-size:12px;padding:2px 8px;">NEW CONTRACT</button>
+    </div>
+    ${active.length===0
+      ? `<div class="no-missions">no active missions<br>generate a contract<br>or advance to next day</div>`
+      : active.map(m=>renderMissionCard(m)).join('')
+    }
+    ${done.length>0?`
+      <hr class="separator">
+      <div style="font-size:10px;color:var(--green2);font-family:'Space Mono',monospace;">✓ ${done.length} completed this run</div>
+    `:''}
+  `;
+}
+
+function renderMissionCard(m) {
+  const mTpl = MISSION_TYPES.find(t=>t.id===m.type);
+  const color = mTpl?.color||'var(--pink)';
+  const completable = state.inventory.some(i=>checkMission(m,i,null));
+  const urgentColor = m.daysLeft<=2?'var(--red)':m.daysLeft<=3?'var(--amber)':'var(--text3)';
+  return `
+    <div class="mission-card">
+      <div class="mission-type" style="color:${color};">${mTpl?.label||'CONTRACT'}</div>
+      <div class="mission-title">${m.title}</div>
+      <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:4px;line-height:1.4;">${m.desc}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+        <div>
+          <span class="mission-reward">+$${m.rewardMoney.toLocaleString()}</span>
+          <span style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-left:6px;">+${m.rewardRep}REP</span>
+        </div>
+        <span class="mission-deadline" style="color:${urgentColor};">⏳ ${m.daysLeft}d left</span>
+      </div>
+      ${completable?`<button class="btn btn-primary" data-complete-mission="${m.id}" style="font-size:12px;padding:2px 9px;margin-top:5px;width:100%;">✓ COMPLETE MISSION</button>`:''}
+    </div>
+  `;
+}
+
+function renderMarketTab() {
+  const dm = state.marketDemand;
+  return `
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:8px;">Day ${state.day} format demand index</div>
+    ${Object.entries(dm).map(([fmt,val])=>`
+      <div class="demand-row">
+        <div class="demand-label">${fmt}</div>
+        <div class="demand-bar"><div class="demand-fill" style="width:${val}%;background:${val>65?'var(--green2)':val>45?'var(--amber2)':'var(--red2)'};"></div></div>
+        <div class="demand-val" style="color:${val>65?'var(--green)':val>45?'var(--amber)':'var(--red)'};">${val}</div>
+      </div>
+    `).join('')}
+    <hr class="separator">
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.8;">
+      RISK WATCH<br>
+      Syndicate: <span style="color:${state.legalHeat>50?'var(--red)':'var(--green2)'};">${state.legalHeat>50?'ACTIVE THREAT':'MONITORING'}</span><br>
+      Legal heat: <span style="color:${state.legalHeat>60?'var(--red)':state.legalHeat>30?'var(--amber)':'var(--green2)'};">${state.legalHeat}/100</span><br>
+      AI forgery: <span style="color:${state.factionRep.ai>40?'var(--amber)':'var(--text3)'};">${state.factionRep.ai>40?'RISING':'NOMINAL'}</span><br>
+      Hype mult: <span style="color:var(--amber);">×${state.hypeEvents.slice(0,3).reduce((a,e)=>+(a*e.mult).toFixed(2),1).toFixed(2)}</span>
+    </div>
+    <hr class="separator">
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.9;">
+      DEALER TIPS<br>
+      ◈ Restore before selling<br>
+      ◈ Leak → hype, lose exclusivity<br>
+      ◈ Negotiate for 10-25% more<br>
+      ◈ Analyze reveals hidden traits<br>
+      ◈ Over-restore = purist backlash<br>
+      ◈ Each day: hype decays, market shifts<br>
+      ◈ Sell fakes to archivists = big rep hit
+    </div>
+  `;
+}
+
+// ---- HISTORY TAB (Memetic Events) ----
+function renderHistoryTab() {
+  const history = state.memeticHistory;
+  return `
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:8px;">Memetic events triggered this run: ${history.length}</div>
+    ${history.length===0
+      ? `<div class="no-missions">no memetic events yet<br>leak or sell high-hype<br>items to trigger events</div>`
+      : history.slice().reverse().map(h=>`
+        <div class="mem-entry">
+          <div class="mem-entry-title">⚡ ${MEMETIC_EFFECTS[h.effect]?.label||h.effect}</div>
+          <div class="mem-entry-sub">${h.itemName.substring(0,45)}<br>Day ${h.day} — ${MEMETIC_EFFECTS[h.effect]?.desc||''}</div>
+        </div>
+      `).join('')
+    }
+    <hr class="separator">
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.8;">
+      HYPE LOG (last 3)<br>
+      ${state.hypeEvents.slice(0,3).map(e=>`◈ ${e.title}: ×${e.mult}`).join('<br>')||'no events yet'}
+    </div>
+  `;
+}
+
+// ---- SHOP / UPGRADES TAB ----
+function renderShopTab() {
+  return `
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:8px;line-height:1.5;">
+      Spend earnings on permanent dealer upgrades. Active day ${state.day}.
+    </div>
+    <div style="font-family:'VT323',monospace;font-size:14px;color:var(--green);margin-bottom:7px;">BALANCE: $${state.money.toLocaleString()}</div>
+    ${UPGRADES.map(u=>{
+      const owned = state.upgrades[u.id];
+      const reqOk = !u.requires || state.upgrades[u.requires];
+      const canAfford = state.money >= u.cost && !owned && reqOk;
+      return `
+        <div class="upgrade-card ${owned?'purchased':''}">
+          <div class="upgrade-icon">${u.icon}</div>
+          <div class="upgrade-info">
+            <div class="upgrade-name">${u.name} ${owned?'✓':''}</div>
+            <div class="upgrade-desc">${u.desc}${u.requires&&!state.upgrades[u.requires]?' <span style="color:var(--red);">Requires Expansion I</span>':''}</div>
+          </div>
+          <div style="text-align:right;min-width:70px;">
+            ${owned
+              ? `<div class="upgrade-cost" style="color:var(--text3);">OWNED</div>`
+              : `<div class="upgrade-cost" style="color:${state.money>=u.cost&&reqOk?'var(--green)':'var(--text3)'};">$${u.cost.toLocaleString()}</div>
+                 <button class="btn ${canAfford?'btn-primary':'btn-disabled'}" data-buy-upgrade="${u.id}" style="font-size:12px;padding:1px 7px;margin-top:3px;" title="${!reqOk?'Prerequisite not met':state.money<u.cost?'Not enough funds':'Purchase'}">BUY</button>`
+            }
+          </div>
+        </div>
+      `;
+    }).join('')}
+    <hr class="separator">
+    <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.8;">
+      CAREER STATS<br>
+      Items Sold: <span style="color:var(--green);">${state.totalSold}</span><br>
+      Total Earned: <span style="color:var(--green);">$${(state.totalEarned||0).toLocaleString()}</span><br>
+      Memetic Events: <span style="color:var(--purple);">${state.memeticHistory.length}</span><br>
+      Days Survived: <span style="color:var(--cyan);">${state.day}</span>
+    </div>
+  `;
+}
+
+// ---- LOG ----
+function renderLog() {
+  const recent = state.logs.slice(-30).reverse();
+  return `
+    <div style="margin-top:8px;">
+      <div class="panel-title" style="padding:5px 10px;border:1px solid var(--border);background:var(--panel);margin-bottom:0;"><div class="dot"></div>ACTIVITY LOG <span style="font-size:10px;color:var(--text3);">[${state.logs.length} entries]</span></div>
+      <div class="log-box" id="log-box">
+        ${recent.map(l=>`
+          <div class="log-line ${l.type}">
+            <span class="ts">[D${l.day||state.day}]</span>
+            <span class="msg">${l.msg}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ---- ACQUIRE MODAL ----
+function renderModal() {
+  const previewItem = state.modalPreviewId ? state.modalItems.find(i=>i.id===state.modalPreviewId) : null;
+  return `
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <button class="modal-close" id="modal-close">✕</button>
+        <div class="panel-title" style="border:none;margin-bottom:10px;font-size:20px;">ACQUIRE MEDIA</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:9px;">
+          Choose source. Browse fee charged per search. Capacity: ${state.inventory.length}/${state.capacity}
+        </div>
+        <div class="source-grid">
+          ${SOURCES.map(s=>`
+            <div class="source-btn ${state.selectedSource===s.id?'selected':''}" data-source="${s.id}">
+              <div class="source-icon">${s.icon}</div>
+              <div class="source-name">${s.name}</div>
+              <div class="source-cost">Browse: $${s.cost} &nbsp;|&nbsp; ${s.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+        ${state.modalItems.length>0 ? `
+          <div>
+            <div class="section-label" style="margin-bottom:7px;">AVAILABLE ARTIFACTS — click to preview</div>
+            ${state.modalItems.map(item=>`
+              <div class="inventory-item ${state.modalPreviewId===item.id?'selected':''}" data-modal-preview="${item.id}" style="cursor:pointer;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                  <span class="item-format-tag ${formatTag(item.format)}">${item.format}</span>
+                  <span style="font-family:VT323,monospace;font-size:13px;color:var(--green);">est. $${item.baseValue}</span>
+                  <span style="font-size:10px;color:${item.risk==='EXTREME'?'var(--red)':item.risk==='HIGH'?'var(--amber)':'var(--text3)'};font-family:'Space Mono',monospace;">RISK:${item.risk}</span>
+                </div>
+                <div class="item-name">${item.name}</div>
+                <div class="item-meta">
+                  <span class="meta-bit ${authColor(item.auth)}">${item.auth.toUpperCase()}</span>
+                  <span class="meta-bit">${item.corrupt}% corrupt</span>
+                  <span class="meta-bit">${item.rarity}% rare</span>
+                </div>
+                ${state.modalPreviewId===item.id && previewItem?`
+                  <div class="modal-preview">
+                    <div class="modal-preview-title">◈ ITEM DETAILS</div>
+                    <div style="margin-bottom:4px;font-style:italic;">"${previewItem.desc}"</div>
+                    <div>Condition: ${previewItem.condition} &nbsp;|&nbsp; Mystery: ${previewItem.mystery}</div>
+                    ${previewItem.traits.length>0?`<div style="margin-top:3px;">Traits detected: ${previewItem.traits.map(t=>t.replace(/_/g,' ')).join(', ')}</div>`:''}
+                  </div>
+                `:''}
+                <div style="margin-top:5px;">
+                  <button class="btn btn-primary" data-acquire="${item.id}" style="font-size:13px;padding:2px 12px;${state.inventory.length>=state.capacity?'opacity:0.4;cursor:not-allowed;':''}" ${state.inventory.length>=state.capacity?'disabled':''}>ACQUIRE → ($${SOURCES.find(s=>s.id===state.selectedSource)?.cost||0})</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : state.selectedSource ? `
+          <button class="btn btn-primary" id="btn-browse" style="font-size:15px;width:100%;padding:7px;margin-top:3px;">BROWSE SOURCE ($${SOURCES.find(s=>s.id===state.selectedSource)?.cost||0})</button>
+        ` : `<div style="text-align:center;padding:14px;color:var(--text3);font-size:11px;font-family:'Space Mono',monospace;">select a source above to browse available items</div>`}
+      </div>
+    </div>
+  `;
+}
+
+// ---- DECISION MODAL ----
+function renderDecisionModal() {
+  const d = state.pendingDecision;
+  if(!d) return '';
+  return `
+    <div class="decision-overlay">
+      <div class="decision-box">
+        <div class="decision-title">⚠ DECISION REQUIRED</div>
+        <div style="font-size:11px;color:var(--purple);font-family:'Space Mono',monospace;margin-bottom:6px;letter-spacing:1px;">${d.subtitle||''}</div>
+        <div class="decision-body">${d.body}</div>
+        <div class="decision-choices">
+          ${d.choices.map((c,i)=>`
+            <button class="decision-choice" data-decision="${i}">
+              <div class="decision-choice-label">${c.label}</div>
+              <div>${c.desc}</div>
+              ${c.consequence?`<div style="color:var(--text3);margin-top:2px;font-size:10px;">→ ${c.consequence}</div>`:''}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- HELP / CODEX MODAL ----
+function renderHelpModal() {
+  return `
+    <div class="help-overlay" id="help-overlay">
+      <div class="help-box">
+        <button class="modal-close" id="help-close">✕</button>
+        <div style="font-family:'VT323',monospace;font-size:26px;color:var(--green);letter-spacing:3px;margin-bottom:12px;">DEALER CODEX</div>
+
+        <div class="help-section">
+          <div class="help-h">GOAL</div>
+          <div class="help-p">Accumulate <span style="color:var(--green);">$25,000</span> by acquiring, processing, and selling lost media artifacts. The market is unstable — every day changes demand, heat, and reputation.</div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">CORE LOOP</div>
+          <div class="help-tip">
+            <span>ACQUIRE</span> — Browse sources (costs a browse fee). Each source has different quality and risk profiles.<br>
+            <span>RESTORE</span> — Minigame to reduce corruption %. Lower corruption = higher value. Don't over-restore (>65%) or purists downgrade your auth.<br>
+            <span>ANALYZE</span> — Minigame to reveal hidden traits and authenticate items. Higher confidence = more traits found.<br>
+            <span>HYPE</span> — Pay $200 (or $100 with Hype Engine) to run a buzz campaign. Hype increases buyer offers.<br>
+            <span>LEAK</span> — Choose how to release an item publicly. Boosts hype but reduces exclusivity value.<br>
+            <span>SELL / NEGOTIATE</span> — Sell to one of six buyers. Each buyer has preferences. Negotiate for up to +25%.<br>
+            <span>ADVANCE DAY</span> — Progress time. Hype decays, market demand shifts, missions expire, events fire.
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">AUTHENTICITY TIERS</div>
+          <div class="help-tip">
+            <span style="color:var(--red);">FAKE</span> — Worthless to archivists. Causes rep damage if sold to them.<br>
+            <span style="color:var(--amber);">PARTIAL</span> — Questionable provenance. Mid-tier value.<br>
+            <span style="color:var(--green);">AUTHENTIC</span> — Premium value, archivists pay 1.9×.<br>
+            <span style="color:var(--purple);">MYTHIC</span> — Legendary rarity. Conspiracy collectors pay 1.7×.<br>
+            <span style="color:var(--text3);">UNKNOWN</span> — Mystery = value to conspiracy buyers.
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">BUYERS</div>
+          <div class="help-tip">
+            🧠 <span>Archivists</span> — Authenticity-first. Hate fakes.<br>
+            👁 <span>Conspiracy Collector</span> — Pays for mystery. Love MYTHIC/UNKNOWN.<br>
+            🎬 <span>Content Creator</span> — High hype = better price. +60% if hype &gt;50.<br>
+            🧪 <span>Researcher</span> — Pay per hidden trait. Analyze first.<br>
+            😈 <span>Black Market</span> — Best for rare formats (rarity &gt;75). No questions asked.<br>
+            🧵 <span>Niche Community</span> — Bonus for pre-1990 items.
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">FACTIONS</div>
+          <div class="help-tip">
+            <span>PRESERV.</span> — Sell authentic items, complete recovery missions.<br>
+            <span>ELITE</span> — Sell rare, exclusive items to Black Market.<br>
+            <span>CULT</span> — Sell MYTHIC/UNKNOWN items, trigger memetic events.<br>
+            <span>SYNDICAT</span> — Heat rises when you deal illegally. Allied = less seizure risk.<br>
+            <span>TREND</span> — Public leaks and hype campaigns gain trend rep.<br>
+            <span>AI FORGER</span> — Floods market with fakes. High AI rep = authentics worth more.
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">LEGAL HEAT</div>
+          <div class="help-p">Selling to Black Market, public leaks, and copyright events raise heat. At heat &gt;80, Copyright Syndicate may seize your highest-risk item. Heat decays 2-5 per day (doubled with Heat Sink upgrade).</div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">MISSIONS</div>
+          <div class="help-p">Active contracts expire by deadline. Complete them via the JOBS tab. Recovery jobs need items restored to ≤20% corruption. Authenticate jobs need analyzed items. Hoard jobs need multiple items of a format.</div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-h">KEYBOARD SHORTCUTS</div>
+          <div class="help-tip">
+            <span>?</span> — Toggle this help screen<br>
+            <span>A</span> — Open Acquire modal<br>
+            <span>N</span> — Advance to next day<br>
+            <span>S</span> — Save game<br>
+            <span>ESC</span> — Close any open modal
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="help-close-bottom" style="width:100%;font-size:16px;padding:6px;margin-top:8px;">CLOSE CODEX</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderToasts() {
+  return `
+    <div class="toast-container">
+      ${state.toasts.map(t=>`<div class="toast ${t.type}">${t.msg}</div>`).join('')}
+    </div>
+  `;
+}
+
+// ===================== EVENTS =====================
+
+function attachEvents() {
+  document.querySelectorAll('[data-inv-sort]').forEach(el=>{
+    el.addEventListener('click',()=>{state.invSort=el.dataset.invSort;render();});
+  });
+  document.querySelectorAll('[data-inv-filter]').forEach(el=>{
+    el.addEventListener('click',()=>{state.invFilter=el.dataset.invFilter;render();});
+  });
+  document.querySelectorAll('[data-buy-upgrade]').forEach(el=>{
+    el.addEventListener('click',()=>buyUpgrade(el.dataset.buyUpgrade));
+  });
+
+  // New game
+  const ngBtn = document.getElementById('btn-new-game');
+  if(ngBtn) ngBtn.addEventListener('click',()=>{
+    state = makeInitialState();
+    initMissions();
+    render();
+  });
+
+  const saveEnd = document.getElementById('btn-save-end');
+  if(saveEnd) saveEnd.addEventListener('click',saveGame);
+
+  // Save / Load
+  const saveBtn = document.getElementById('btn-save');
+  if(saveBtn) saveBtn.addEventListener('click',saveGame);
+  const loadBtn = document.getElementById('btn-load');
+  if(loadBtn) loadBtn.addEventListener('click',loadGame);
+  const resetBtn = document.getElementById('btn-reset');
+  if(resetBtn) resetBtn.addEventListener('click',resetGame);
+
+  // Help
+  const helpBtn = document.getElementById('btn-help');
+  if(helpBtn) helpBtn.addEventListener('click',()=>{state.showHelp=true;render();});
+  const helpClose = document.getElementById('help-close');
+  if(helpClose) helpClose.addEventListener('click',()=>{state.showHelp=false;render();});
+  const helpCloseBot = document.getElementById('help-close-bottom');
+  if(helpCloseBot) helpCloseBot.addEventListener('click',()=>{state.showHelp=false;render();});
+  const helpOverlay = document.getElementById('help-overlay');
+  if(helpOverlay) helpOverlay.addEventListener('click',e=>{if(e.target===helpOverlay){state.showHelp=false;render();}});
+
+  // Select inventory item
+  document.querySelectorAll('.inventory-item[data-id]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const item = state.inventory.find(i=>i.id===el.dataset.id);
+      if(item){state.selectedItem=item;state.minigame=null;state.negotiating=null;render();}
+    });
+  });
+
+  // Actions
+  document.querySelectorAll('[data-action]').forEach(el=>{
+    el.addEventListener('click',()=>doAction(el.dataset.action));
+  });
+
+  // Sell
+  document.querySelectorAll('[data-sell]').forEach(el=>{
+    el.addEventListener('click',(e)=>{e.stopPropagation();doSell(el.dataset.sell,el.dataset.itemid);});
+  });
+
+  // Negotiate
+  document.querySelectorAll('[data-negotiate]').forEach(el=>{
+    el.addEventListener('click',(e)=>{e.stopPropagation();startNegotiate(el.dataset.negotiate,el.dataset.itemid);});
+  });
+
+  // Neg actions
+  document.querySelectorAll('[data-neg-action]').forEach(el=>{
+    el.addEventListener('click',()=>doNegAction(el.dataset.negAction));
+  });
+
+  // Complete mission
+  document.querySelectorAll('[data-complete-mission]').forEach(el=>{
+    el.addEventListener('click',()=>completeMissionById(el.dataset.completeMission));
+  });
+
+  // Acquire btn
+  const acq = document.getElementById('btn-acquire');
+  if(acq) acq.addEventListener('click',()=>{state.showModal=true;state.modalItems=[];state.selectedSource=null;state.modalPreviewId=null;render();});
+
+  // Advance day
+  const adv = document.getElementById('btn-advance');
+  if(adv) adv.addEventListener('click',advanceDay);
+
+  // Modal
+  const overlay = document.getElementById('modal-overlay');
+  if(overlay) overlay.addEventListener('click',e=>{if(e.target===overlay){state.showModal=false;state.modalItems=[];state.modalPreviewId=null;render();}});
+  const mclose = document.getElementById('modal-close');
+  if(mclose) mclose.addEventListener('click',()=>{state.showModal=false;state.modalItems=[];state.modalPreviewId=null;render();});
+
+  document.querySelectorAll('.source-btn').forEach(el=>{
+    el.addEventListener('click',()=>{state.selectedSource=el.dataset.source;state.modalItems=[];state.modalPreviewId=null;render();});
+  });
+
+  const browse = document.getElementById('btn-browse');
+  if(browse) browse.addEventListener('click',browseSource);
+
+  // Modal item preview (click to toggle)
+  document.querySelectorAll('[data-modal-preview]').forEach(el=>{
+    el.addEventListener('click',(e)=>{
+      if(e.target.closest('[data-acquire]')) return;
+      const id = el.dataset.modalPreview;
+      state.modalPreviewId = state.modalPreviewId===id ? null : id;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-acquire]').forEach(el=>{
+    el.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(state.inventory.length>=state.capacity){showToast('⚠ Inventory full!','bad');return;}
+      const item = state.modalItems.find(i=>i.id===el.dataset.acquire);
+      if(!item) return;
+      const source = SOURCES.find(s=>s.id===state.selectedSource);
+      if(!source||state.money<source.cost){showToast('Not enough funds!','bad');return;}
+      state.money -= source.cost;
+      state.inventory.push(item);
+      state.modalItems = state.modalItems.filter(i=>i.id!==item.id);
+      if(state.modalPreviewId===item.id) state.modalPreviewId=null;
+      log(`Acquired: ${item.name.substring(0,50)}`, 'good');
+      showToast('Item acquired!','good');
+      checkMissionTriggers();
+      if(state.modalItems.length===0) state.showModal=false;
+      render();
+    });
+  });
+
+  // Minigame
+  const mgClick = document.getElementById('mg-click');
+  if(mgClick) mgClick.addEventListener('click',()=>{
+    if(state.minigame){
+      state.minigame.progress = Math.min(100, state.minigame.progress+rand(7,16));
+      render();
+    }
+  });
+
+  const mgFinish = document.getElementById('mg-finish');
+  if(mgFinish) mgFinish.addEventListener('click',finishMinigame);
+
+  const mgCancel = document.getElementById('mg-cancel');
+  if(mgCancel) mgCancel.addEventListener('click',()=>{state.minigame=null;render();});
+
+  // Analysis sliders
+  const noiseSlider = document.getElementById('mg-noise');
+  if(noiseSlider) noiseSlider.addEventListener('input',e=>{if(state.minigame){state.minigame.noise=+e.target.value;render();}});
+  const freqSlider = document.getElementById('mg-freq');
+  if(freqSlider) freqSlider.addEventListener('input',e=>{if(state.minigame){state.minigame.freq=+e.target.value;render();}});
+  const phaseSlider = document.getElementById('mg-phase');
+  if(phaseSlider) phaseSlider.addEventListener('input',e=>{if(state.minigame){state.minigame.phase=+e.target.value;render();}});
+
+  // Tabs
+  document.querySelectorAll('[data-tab]').forEach(el=>{
+    el.addEventListener('click',()=>{state.rightTab=el.dataset.tab;render();});
+  });
+
+  // Mission gen
+  const missionBtn = document.getElementById('btn-gen-mission');
+  if(missionBtn) missionBtn.addEventListener('click',()=>{
+    if(state.missions.filter(m=>!m.completed).length>=4){showToast('Max 4 active missions!','bad');return;}
+    const m = genMission();
+    if(m){
+      state.missions.push({...m,id:'M_'+Date.now()+'_'+rand(100,999),daysLeft:m.deadline});
+      log(`New contract available: ${m.title.substring(0,50)}`, 'info');
+      showToast('📋 New contract added!','info');
+      render();
+    } else {
+      showToast('No suitable contract available.','info');
+    }
+  });
+
+  // Decision
+  document.querySelectorAll('[data-decision]').forEach(el=>{
+    el.addEventListener('click',()=>resolveDecision(+el.dataset.decision));
+  });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e=>{
+  if(e.key==='?' || e.key==='/') {
+    if(!state.showModal&&!state.pendingDecision) { state.showHelp=!state.showHelp; render(); }
+  }
+  if(e.key==='Escape') {
+    let changed = false;
+    if(state.showHelp){state.showHelp=false;changed=true;}
+    if(state.showModal){state.showModal=false;state.modalItems=[];state.modalPreviewId=null;changed=true;}
+    if(state.pendingDecision){/* don't auto-cancel decisions */}
+    if(changed) render();
+  }
+  if(e.key==='a'||e.key==='A') {
+    if(!state.showModal&&!state.showHelp&&!state.pendingDecision&&!state.gameOver&&!state.gameWon) {
+      state.showModal=true;state.modalItems=[];state.selectedSource=null;state.modalPreviewId=null;render();
+    }
+  }
+  if(e.key==='n'||e.key==='N') {
+    if(!state.showModal&&!state.showHelp&&!state.pendingDecision&&!state.gameOver&&!state.gameWon) {
+      advanceDay();
+    }
+  }
+  if(e.key==='s'||e.key==='S') {
+    if(!state.showModal&&!state.showHelp&&!state.pendingDecision) {
+      saveGame();
+    }
+  }
+});
+
+// ===================== LOGIC =====================
+
+function doAction(action) {
+  const item = state.selectedItem;
+  if(!item) return;
+
+  if(action==='restore') {
+    if(state.minigame) return;
+    if(item.corrupt<=5){showToast('Already clean.','info');return;}
+    state.minigame={type:'restore',progress:0,noise:50};
+    log(`Starting restoration: ${item.format} — ${item.genre}`, 'info');
+    render();
+  }
+
+  if(action==='analyze') {
+    if(item.analyzed){showToast('Already analyzed.','info');return;}
+    const boost = state.upgrades.analyst_kit ? 20 : 0;
+    state.minigame={type:'analyze',progress:0,noise:Math.min(100,rand(20,60)+boost),freq:Math.min(100,rand(20,60)+boost),phase:Math.min(100,rand(20,60)+boost)};
+    log(`Running signal analysis on ${item.era} ${item.format}...`, 'info');
+    render();
+  }
+
+  if(action==='hype_boost') {
+    const cost = state.upgrades.hyper_hype ? 100 : 200;
+    if(state.money<cost){showToast('Not enough funds for hype campaign!','bad');return;}
+    state.money -= cost;
+    const boost = rand(12,28) + (state.upgrades.hyper_hype ? 5 : 0);
+    item.hype = Math.min(100, item.hype+boost);
+    item.hyped = true;
+    state.factionRep.trend = Math.min(100, state.factionRep.trend+4);
+    log(`Hype campaign launched on ${item.era} ${item.format}. +${boost} hype.`, 'hype');
+    showToast(`🔥 +${boost} HYPE! Buzz spreading.`, 'hype');
+    render();
+  }
+
+  if(action==='leak') {
+    state.pendingDecision = {
+      subtitle:'LEAK DECISION',
+      body:`You're about to release "${item.name.substring(0,60)}" into the public ecosystem. This will spike interest — but you'll lose exclusivity and sell-price ceiling. How do you leak it?`,
+      item: item,
+      choices:[
+        { label:'PUBLIC DUMP', desc:'Post freely. Maximum hype, zero exclusivity.', consequence:'+35 hype, -15% sell price ceiling, +Trend rep', action:'public_leak' },
+        { label:'PRIVATE TEASE', desc:'Hint at it. Forum whispers. Controlled hype.', consequence:'+15 hype, minor rep loss, +Cult rep', action:'private_tease' },
+        { label:'STAGED LEAK', desc:'Anonymous drop with fingerprints removed.', consequence:'+25 hype, +legal heat, no rep change', action:'staged_leak' },
+        { label:'CANCEL', desc:'Keep it exclusive.', consequence:'No change.', action:'cancel' },
+      ]
+    };
+    render();
+  }
+
+  if(action==='destroy') {
+    state.pendingDecision = {
+      subtitle:'DESTRUCTION DECISION',
+      body:`Destroy "${item.name.substring(0,60)}"? This cannot be undone. Some knowledge will be lost forever. Preservationists will notice.`,
+      item: item,
+      choices:[
+        { label:'DESTROY IT', desc:'Remove from existence. Permanently.', consequence:'-10 Preservationist rep, -5 rep', action:'confirm_destroy' },
+        { label:'KEEP IT', desc:'Return to inventory.', action:'cancel' },
+      ]
+    };
+    render();
+  }
+}
+
+function resolveDecision(choiceIdx) {
+  const d = state.pendingDecision;
+  if(!d) return;
+  const choice = d.choices[choiceIdx];
+  const item = d.item || state.selectedItem;
+  state.pendingDecision = null;
+
+  if(!choice || choice.action==='cancel') { render(); return; }
+
+  if(choice.action==='public_leak') {
+    item.hype = Math.min(100, item.hype+rand(25,40));
+    item.hyped = true;
+    item.baseValue = Math.round(item.baseValue*0.85);
+    const ev = pick(HYPE_EVENTS);
+    state.hypeEvents.unshift(ev);
+    if(state.hypeEvents.length>4) state.hypeEvents.pop();
+    applyHypeEventEffect(ev);
+    state.factionRep.trend = Math.min(100, state.factionRep.trend+12);
+    state.rep = clamp(state.rep-rand(3,8),0,100);
+    triggerMemeticEffect(item, pick(['trend','obsession']));
+    log(`PUBLIC LEAK: ${item.name.substring(0,40)} going viral!`, 'hype');
+    showToast('⚡ Public leak! Hype surging!','hype');
+  }
+
+  if(choice.action==='private_tease') {
+    item.hype = Math.min(100, item.hype+rand(10,18));
+    item.hyped = true;
+    state.factionRep.cult = Math.min(100, state.factionRep.cult+8);
+    state.rep = clamp(state.rep-rand(1,3),0,100);
+    log('Private tease circulating on underground forums.', 'spooky');
+    showToast('🔮 Tease circulating...','spooky');
+  }
+
+  if(choice.action==='staged_leak') {
+    item.hype = Math.min(100, item.hype+rand(18,28));
+    item.hyped = true;
+    state.legalHeat = Math.min(100, state.legalHeat+10);
+    const ev = pick(HYPE_EVENTS);
+    state.hypeEvents.unshift(ev);
+    if(state.hypeEvents.length>4) state.hypeEvents.pop();
+    applyHypeEventEffect(ev);
+    log('STAGED LEAK: Anonymous drop. Fingerprints removed.', 'hype');
+    showToast('⚡ Staged leak deployed!','hype');
+  }
+
+  if(choice.action==='confirm_destroy') {
+    if(item) {
+      state.inventory = state.inventory.filter(i=>i.id!==item.id);
+      if(state.selectedItem&&state.selectedItem.id===item.id) state.selectedItem=null;
+      state.factionRep.preserv = clamp(state.factionRep.preserv-10,0,100);
+      state.rep = clamp(state.rep-5,0,100);
+      log(`Destroyed artifact: ${item.name.substring(0,40)}. Knowledge lost.`, 'bad');
+      showToast('Artifact destroyed.','bad');
+    }
+  }
+
+  // Fake-to-archivist warning decision
+  if(choice.action==='confirm_sell_fake') {
+    const d2 = state._pendingSellFake;
+    if(d2) { state._pendingSellFake=null; doSell(d2.buyerId, d2.itemId, true); }
+  }
+  if(choice.action==='cancel_sell_fake') {
+    state._pendingSellFake=null;
+  }
+
+  render();
+}
+
+function finishMinigame() {
+  const item = state.selectedItem;
+  const mg   = state.minigame;
+  if(!item||!mg) return;
+
+  if(mg.type==='restore') {
+    const reduction = Math.round(mg.progress*0.38);
+    const oldCorrupt = item.corrupt;
+    item.corrupt = Math.max(2, item.corrupt-reduction);
+    item.restored = Math.min(100, item.restored+reduction);
+    if(item.restored>65) {
+      if(item.auth==='authentic') {
+        item.auth='partial';
+        state.factionRep.preserv = clamp(state.factionRep.preserv-12,0,100);
+        log('PURIST BACKLASH: Over-restored! Authenticity degraded.','bad');
+        showToast('⚠ Purists enraged! Auth dropped!','bad');
+      }
+    } else if(item.restored>40 && Math.random()<0.3) {
+      log('Restoring carefully. Purists watching.','spooky');
+    }
+    log(`Restoration complete: corruption ${oldCorrupt}% → ${item.corrupt}%`, 'good');
+    showToast(`-${reduction}% corruption!`,'good');
+    checkMissionTriggers();
+  }
+
+  if(mg.type==='analyze') {
+    item.analyzed = true;
+    const conf = Math.round((mg.noise+(mg.freq||50)+(mg.phase||50))/3);
+    if(conf>55 && Math.random()<0.6) {
+      const newTrait = pick(HIDDEN_TRAITS.filter(t=>!item.traits.includes(t)));
+      if(newTrait) {
+        item.traits.push(newTrait);
+        log(`Hidden trait discovered: ${newTrait.replace(/_/g,' ')}`, 'spooky');
+        showToast('🔮 Hidden trait found!','spooky');
+      }
+    }
+    if(conf>45 && item.traits.length>1 && Math.random()<0.3) {
+      const t2 = pick(HIDDEN_TRAITS.filter(t=>!item.traits.includes(t)));
+      if(t2) item.traits.push(t2);
+    }
+    if(conf>65 && item.auth==='unknown') {
+      item.auth = pick(['fake','partial','authentic','mythic']);
+      log(`Analysis result: item classified as ${item.auth.toUpperCase()}`, 'spooky');
+    }
+    if(item.traits.length>0) {
+      state.factionRep.cult = Math.min(100, state.factionRep.cult+5);
+    }
+    log(`Analysis complete. Confidence: ${conf}%. Traits found: ${item.traits.length}`, 'info');
+    showToast(`Scan done! ${conf}% confidence.`,'info');
+    checkMissionTriggers();
+  }
+
+  state.minigame = null;
+  render();
+}
+
+function doSell(buyerId, itemId, skipWarning=false) {
+  const item  = state.inventory.find(i=>i.id===itemId);
+  const buyer = BUYERS.find(b=>b.id===buyerId);
+  if(!item||!buyer) return;
+
+  // Warn when selling fake to archivist
+  if(buyer.id==='archivist' && item.auth==='fake' && !skipWarning) {
+    state._pendingSellFake = {buyerId, itemId};
+    state.pendingDecision = {
+      subtitle:'AUTHENTICITY WARNING',
+      body:`This item is classified FAKE. Selling it to Archivists will severely damage your reputation with Preservationists. Are you sure?`,
+      choices:[
+        { label:'SELL ANYWAY', desc:'Take the money. Reputation be damned.', consequence:'-20 Preserv. rep, -15 personal REP', action:'confirm_sell_fake' },
+        { label:'CANCEL', desc:'Find a different buyer.', action:'cancel_sell_fake' },
+      ]
+    };
+    render();
+    return;
+  }
+
+  const finalPrice = calcOffer(item, buyer);
+
+  if(buyer.id==='archivist') {
+    if(item.auth==='fake') {
+      state.rep = clamp(state.rep-15,0,100);
+      state.factionRep.preserv = clamp(state.factionRep.preserv-20,0,100);
+      log('Sold a FAKE to archivists! Reputation hit.','bad');
+    } else {
+      state.factionRep.preserv = Math.min(100, state.factionRep.preserv+8);
+    }
+  }
+  if(buyer.id==='blackmarket') {
+    state.legalHeat = Math.min(100, state.legalHeat+5);
+    state.factionRep.copyright = clamp(state.factionRep.copyright-5,0,100);
+  }
+  if(buyer.id==='conspiracy') {
+    state.factionRep.cult = Math.min(100, state.factionRep.cult+6);
+  }
+  if(buyer.id==='creator') {
+    state.factionRep.trend = Math.min(100, state.factionRep.trend+5);
+    if(item.hype>60) triggerMemeticEffect(item, pick(['trend','obsession']));
+  }
+  if(buyer.id==='researcher') {
+    if(item.traits.length>1) triggerMemeticEffect(item, 'cult_fandom');
+  }
+
+  checkSellMission(item, buyer.id);
+
+  state.money += finalPrice;
+  state.rep = clamp(state.rep+rand(1,4),0,100);
+  state.totalSold++;
+  state.totalEarned = (state.totalEarned||0) + finalPrice;
+  state.inventory = state.inventory.filter(i=>i.id!==item.id);
+  if(state.selectedItem&&state.selectedItem.id===item.id) state.selectedItem=null;
+  state.negotiating = null;
+
+  log(`SOLD: ${item.name.substring(0,38)} → ${buyer.name} for $${finalPrice.toLocaleString()}`, 'good');
+  showToast(`$${finalPrice.toLocaleString()} received!`,'good');
+  checkEndgame();
+  render();
+}
+
+function startNegotiate(buyerId, itemId) {
+  const item  = state.inventory.find(i=>i.id===itemId);
+  const buyer = BUYERS.find(b=>b.id===buyerId);
+  if(!item||!buyer) return;
+  const baseOffer = calcOffer(item, buyer);
+  state.negotiating = { buyerId, itemId, currentOffer:baseOffer, rounds:3 };
+  log(`Negotiating with ${buyer.name}...`, 'info');
+  render();
+}
+
+function doNegAction(action) {
+  const neg = state.negotiating;
+  if(!neg) return;
+
+  if(action==='accept') {
+    doSell(neg.buyerId, neg.itemId, true); // skip fake warning once negotiation initiated
+    state.negotiating = null;
+    return;
+  }
+  if(action==='walk') {
+    state.negotiating = null;
+    log('Walked away from negotiation.','info');
+    showToast('Deal abandoned.','info');
+    render();
+    return;
+  }
+  if(action.startsWith('counter')) {
+    if(neg.rounds<=0){showToast('No rounds left! Accept or walk.','bad');return;}
+    const pct = action==='counter10'?0.10:0.25;
+    const roll = Math.random();
+    neg.rounds--;
+    if(roll<0.4) {
+      neg.currentOffer = Math.round(neg.currentOffer*(1+pct));
+      log(`${BUYERS.find(b=>b.id===neg.buyerId).name} accepted your counter.`,'good');
+      showToast('Counter accepted!','good');
+    } else if(roll<0.7) {
+      const partial = pct*0.5;
+      neg.currentOffer = Math.round(neg.currentOffer*(1+partial));
+      log('Partial counter: buyer met halfway.','info');
+      showToast('Partial counter!','info');
+    } else {
+      log('Counter rejected. Buyer holding firm.','bad');
+      showToast('Counter rejected.','bad');
+    }
+    render();
+  }
+}
+
+function triggerMemeticEffect(item, effectKey) {
+  if(item.memeticEffect) return;
+  if(!MEMETIC_EFFECTS[effectKey]) return;
+  item.memeticEffect = effectKey;
+  const effect = MEMETIC_EFFECTS[effectKey];
+  effect.worldChange(state);
+  state.memeticHistory.push({itemName:item.name, effect:effectKey, day:state.day});
+  log(`MEMETIC EFFECT: ${effect.label} — ${effect.desc}`, 'spooky');
+  showToast(`⚡ ${effect.label}!`,'spooky');
+}
+
+function applyHypeEventEffect(ev) {
+  if(!ev.worldEffect) return;
+  if(ev.worldEffect==='copyright_heat') state.legalHeat=Math.min(100,state.legalHeat+15);
+  if(ev.worldEffect==='trust_drop') state.rep=clamp(state.rep-5,0,100);
+  if(ev.worldEffect==='market_fakes') state.factionRep.ai=Math.min(100,state.factionRep.ai+10);
+  if(ev.worldEffect==='ai_flood') {
+    state.factionRep.ai=Math.min(100,state.factionRep.ai+15);
+    FORMATS.forEach(f=>{state.marketDemand[f]=Math.min(100,(state.marketDemand[f]||50)+5);});
+  }
+  if(ev.worldEffect==='legal_heat') state.legalHeat=Math.min(100,state.legalHeat+20);
+  if(ev.worldEffect==='cult_surge') state.factionRep.cult=Math.min(100,state.factionRep.cult+15);
+}
+
+function checkMissionTriggers() {
+  // Used after acquiring or restoring — just triggers render which re-evaluates completable
+}
+
+function checkSellMission(item, buyerId) {
+  state.missions.forEach(m=>{
+    if(m.completed) return;
+    if(m.checkType==='sell_specific' && item.format===m.targetFormat && buyerId===m.targetBuyer) {
+      completeMissionById(m.id);
+    }
+    if(m.checkType==='hoard') {
+      // Check after sell won't complete hoard (selling reduces inventory), ignore
+    }
+  });
+}
+
+function completeMissionById(mId) {
+  const m = state.missions.find(x=>x.id===mId);
+  if(!m||m.completed) return;
+  m.completed = true;
+  state.money += m.rewardMoney;
+  state.rep = clamp(state.rep+m.rewardRep,0,100);
+  if(m.rewardFaction) {
+    const fId = m.rewardFaction.id;
+    if(state.factionRep[fId]!==undefined) {
+      state.factionRep[fId] = Math.min(100, state.factionRep[fId]+m.rewardFaction.amt);
+    }
+  }
+  log(`MISSION COMPLETE: ${m.title.substring(0,50)} — +$${m.rewardMoney} +${m.rewardRep}REP`, 'good');
+  showToast(`Mission complete! +$${m.rewardMoney.toLocaleString()}`,'good');
+  render();
+}
+
+function browseSource() {
+  const source = SOURCES.find(s=>s.id===state.selectedSource);
+  if(!source) return;
+  if(state.money<source.cost){showToast('Not enough funds to browse!','bad');return;}
+  // Don't deduct here; deduct on acquire
+  const count = state.upgrades.insider_tip ? rand(4,6) : rand(2,4);
+  state.modalItems = Array.from({length:count},()=>genItem(source.qualityMult, source.riskBonus));
+  render();
+}
+
+function advanceDay() {
+  state.day++;
+
+  state.missions = state.missions.map(m=>{
+    if(m.completed) return m;
+    const daysLeft = m.daysLeft-1;
+    if(daysLeft<=0) {
+      log(`Mission expired: ${m.title.substring(0,50)}`, 'bad');
+      showToast('Contract expired!','bad');
+      state.rep = clamp(state.rep-3,0,100);
+      return {...m,completed:true,expired:true};
+    }
+    return {...m,daysLeft};
+  });
+
+  if(Math.random()<0.35 && state.missions.filter(m=>!m.completed).length<4) {
+    const m = genMission();
+    if(m) {
+      state.missions.push({...m,id:'M_'+Date.now(),daysLeft:m.deadline});
+      log(`New contract available: ${m.title.substring(0,50)}`, 'info');
+    }
+  }
+
+  if(Math.random()<0.4) {
+    const ev = pick(HYPE_EVENTS);
+    state.hypeEvents.unshift(ev);
+    if(state.hypeEvents.length>4) state.hypeEvents.pop();
+    applyHypeEventEffect(ev);
+    log(`HYPE EVENT: ${ev.title} — ${ev.desc}`, 'hype');
+  }
+
+  if(Math.random()<0.25) {
+    const wev = pick(WORLD_EVENTS);
+    state.worldEvents.unshift(wev);
+    if(state.worldEvents.length>2) state.worldEvents.pop();
+    applyWorldEvent(wev);
+  } else {
+    if(state.worldEvents.length>0) state.worldEvents=[];
+  }
+
+  FORMATS.forEach(f=>{
+    const delta = rand(-8,8);
+    state.marketDemand[f] = clamp((state.marketDemand[f]||50)+delta, 20, 95);
+  });
+
+  if(Math.random()<0.65) { const l=pick(LOG_POOL); log(l.msg,l.type); }
+
+  state.inventory.forEach(i=>{ i.hype=Math.max(0,i.hype-rand(2,7)); });
+
+  if(!state.upgrades.rep_shield) state.rep = clamp(state.rep-1,0,100);
+
+  const heatDecay = state.upgrades.heat_sink ? rand(4,10) : rand(2,5);
+  state.legalHeat = Math.max(0, state.legalHeat - heatDecay);
+
+  if(state.legalHeat>80 && Math.random()<0.2) {
+    const highRiskItem = state.inventory.find(i=>i.risk==='EXTREME'||i.risk==='HIGH');
+    if(highRiskItem) {
+      state.inventory = state.inventory.filter(i=>i.id!==highRiskItem.id);
+      if(state.selectedItem&&state.selectedItem.id===highRiskItem.id) state.selectedItem=null;
+      log(`⚠ SEIZURE: Copyright Syndicate raided. Lost: ${highRiskItem.name.substring(0,40)}`, 'bad');
+      showToast('⚠ Artifact seized by authorities!','bad');
+      state.factionRep.copyright = Math.min(100,state.factionRep.copyright+10);
+      state.legalHeat = Math.max(0,state.legalHeat-20);
+    }
+  }
+
+  showToast(`Day ${state.day} begins.`,'info');
+  checkEndgame();
+  render();
+}
+
+function applyWorldEvent(wev) {
+  if(wev.effect==='copyright_heat') { state.legalHeat=Math.min(100,state.legalHeat+20); state.factionRep.copyright=Math.min(100,state.factionRep.copyright+10); }
+  if(wev.effect==='rarity_spike')   { FORMATS.forEach(f=>{ state.marketDemand[f]=Math.min(100,(state.marketDemand[f]||50)+12); }); }
+  if(wev.effect==='cult_surge')     { state.factionRep.cult=Math.min(100,state.factionRep.cult+15); }
+  if(wev.effect==='ai_flood')       { state.factionRep.ai=Math.min(100,state.factionRep.ai+20); FORMATS.forEach(f=>{ state.marketDemand[f]=Math.min(100,(state.marketDemand[f]||50)+8); }); }
+  if(wev.effect==='price_drop')     { FORMATS.forEach(f=>{ state.marketDemand[f]=clamp((state.marketDemand[f]||50)-12,20,95); }); }
+  if(wev.effect==='hype_surge')     { state.inventory.forEach(i=>{ i.hype=Math.min(100,i.hype+rand(10,20)); }); }
+  log(`WORLD EVENT: ${wev.title} — ${wev.desc}`, wev.severity||'info');
+}
+
+function log(msg, type='info') {
+  state.logs.push({msg, type, day:state.day});
+}
+
+function showToast(msg, type='info') {
+  const id = Date.now()+rand(0,999);
+  state.toasts.push({msg,type,id});
+  setTimeout(()=>{state.toasts=state.toasts.filter(t=>t.id!==id);render();},2800);
+}
+
+function scrollLog() {
+  const lb = document.getElementById('log-box');
+  if(lb) lb.scrollTop=0;
+}
+
+// ===================== INIT =====================
+render();
+
+// Waveform animation
+setInterval(()=>{
+  if(!state.selectedItem||state.pendingDecision) return;
+  document.querySelectorAll('.wave-bar').forEach(b=>{
+    const h = Math.round(8+Math.random()*26);
+    b.style.height = h+'px';
+    b.style.background = h>20?'var(--green)':'var(--green2)';
+  });
+},280);
+</script>
+</body>
+</html>
